@@ -461,6 +461,7 @@ export default function CirclesGaragePage() {
 
   const createTweet = useMemo(() => parseXPostInput(createForm.tweetUrl), [createForm.tweetUrl]);
   const createTitle = createForm.title.trim();
+  const createDescription = createForm.description.trim();
   const createRewardCrc = Number(createForm.rewardCrc);
   const createMaxClaims = Math.floor(Number(createForm.maxClaims));
   const createBudgetValid =
@@ -1741,6 +1742,22 @@ export default function CirclesGaragePage() {
                 placeholder="Title"
                 className="h-14 rounded-lg border border-ink/10 bg-sand/50 px-4 text-sm font-bold leading-none outline-none placeholder:text-ink/42 focus:border-marine dark:border-white/10 dark:bg-black/20 dark:placeholder:text-white/42"
               />
+              <label className="block rounded-lg border border-ink/10 bg-sand/50 p-4 transition focus-within:border-marine dark:border-white/10 dark:bg-black/20">
+                <span className="text-[10px] font-black uppercase tracking-[0.14em] text-ink/45 dark:text-white/45">
+                  Description
+                </span>
+                <textarea
+                  value={createForm.description}
+                  onChange={(event) => setCreateForm((prev) => ({ ...prev, description: event.target.value }))}
+                  maxLength={500}
+                  rows={4}
+                  placeholder="Tell users what to do and why this boost matters."
+                  className="mt-3 min-h-[104px] w-full resize-y bg-transparent text-sm font-bold leading-6 text-ink outline-none placeholder:text-ink/42 dark:text-white dark:placeholder:text-white/42"
+                />
+                <span className="mt-2 block text-right text-[10px] font-black uppercase tracking-[0.12em] text-ink/40 dark:text-white/40">
+                  {createForm.description.length}/500
+                </span>
+              </label>
               <input
                 value={createForm.tweetUrl}
                 onChange={(event) => setCreateForm((prev) => ({ ...prev, tweetUrl: event.target.value }))}
@@ -1833,6 +1850,7 @@ export default function CirclesGaragePage() {
               </div>
               <CreatorCampaignPreview
                 title={createTitle}
+                description={createDescription}
                 action={createForm.action}
                 tweet={createTweet}
                 rewardCrc={createRewardCrc}
@@ -2077,6 +2095,7 @@ function PaymentQrCode({
 
 function CreatorCampaignPreview({
   title,
+  description,
   action,
   tweet,
   rewardCrc,
@@ -2086,6 +2105,7 @@ function CreatorCampaignPreview({
   ready,
 }: {
   title: string;
+  description: string;
   action: GarageXCampaign["action"];
   tweet: ReturnType<typeof parseXPostInput>;
   rewardCrc: number;
@@ -2133,7 +2153,16 @@ function CreatorCampaignPreview({
         <h3 className="mt-4 font-display text-2xl font-black tracking-tight">
           {title || "Campaign title"}
         </h3>
-        <p className="mt-2 text-sm font-semibold leading-6 text-ink/58 dark:text-white/62">
+        {description ? (
+          <p className="mt-2 text-sm font-semibold leading-6 text-ink/58 dark:text-white/62">
+            {description}
+          </p>
+        ) : (
+          <p className="mt-2 text-sm font-semibold leading-6 text-ink/58 dark:text-white/62">
+            Add a short description so users understand the mission.
+          </p>
+        )}
+        <p className="mt-2 text-xs font-bold leading-5 text-ink/45 dark:text-white/45">
           {tweet
             ? `Target post ${tweet.username ? `@${tweet.username}` : tweet.id}`
             : "Waiting for a valid X post."}
