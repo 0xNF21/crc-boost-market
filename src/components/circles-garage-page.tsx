@@ -1082,7 +1082,7 @@ export default function CirclesGaragePage() {
 
   return (
     <main className="garage-theme relative isolate min-h-screen w-full max-w-full overflow-x-hidden pb-16 text-ink dark:text-white">
-      <div className="fixed left-2 right-2 top-3 z-50 flex max-w-[calc(100vw-1rem)] items-center justify-end gap-1.5 sm:left-auto sm:right-5 sm:top-4 sm:gap-2">
+      <div className="fixed left-2 right-2 top-3 z-50 flex max-w-[calc(100vw-1rem)] items-center justify-end gap-1.5 sm:hidden">
         <LanguageSwitcher className="h-11 shrink-0 rounded-2xl border border-ink/10 bg-white/80 px-1.5 shadow-[0_18px_55px_-32px_rgba(20,20,24,0.75)] backdrop-blur-xl dark:border-white/10 dark:bg-[#202024]/90 sm:px-2" />
         <button
           type="button"
@@ -1115,6 +1115,29 @@ export default function CirclesGaragePage() {
               <p className="text-xs font-bold text-ink/50 dark:text-white/55">by NF-Society</p>
             </div>
           </Link>
+          <div className="hidden items-center gap-2 sm:flex">
+            <LanguageSwitcher className="h-11 shrink-0 rounded-2xl border border-ink/10 bg-white/80 px-2 shadow-[0_18px_55px_-32px_rgba(20,20,24,0.75)] backdrop-blur-xl dark:border-white/10 dark:bg-[#202024]/90" />
+            <button
+              type="button"
+              onClick={() => openGarageSection("profile")}
+              className="inline-flex h-11 max-w-[210px] shrink-0 items-center gap-2 overflow-hidden rounded-2xl border border-ink/10 bg-white/80 px-2.5 text-sm font-black text-ink shadow-[0_18px_55px_-32px_rgba(20,20,24,0.75)] backdrop-blur-xl transition hover:border-marine/25 hover:bg-white dark:border-white/10 dark:bg-[#202024]/90 dark:text-white dark:hover:bg-white/15"
+              title="Profile"
+              aria-label="Open profile"
+            >
+              {circlesAvatarUrl ? (
+                <img
+                  src={circlesAvatarUrl}
+                  alt={circlesDisplayName}
+                  className="h-8 w-8 shrink-0 rounded-full border border-ink/10 object-cover dark:border-white/10"
+                />
+              ) : (
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink text-white dark:bg-white dark:text-ink">
+                  <Wallet className="h-4 w-4" />
+                </span>
+              )}
+              <span className="min-w-0 truncate">{loading ? "loading" : circlesDisplayName}</span>
+            </button>
+          </div>
         </div>
       </section>
 
