@@ -28,6 +28,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { useAuthSession } from "@/components/auth-provider";
+import { LanguageSwitcher } from "@/components/language-provider";
 import { useMiniApp } from "@/components/miniapp-provider";
 import { clientAuthHeaders } from "@/lib/client-auth-token";
 
@@ -1047,6 +1048,13 @@ export default function CirclesGaragePage() {
   const circlesAvatarUrl = myProfile?.imageUrl || null;
   const primaryFundingSent = fundingPayment ? hasFundingSent(fundingSentTxs, fundingPayment.campaignId) : false;
 
+  function openGarageSection(section: GarageSection) {
+    setGarageSection(section);
+    window.setTimeout(() => {
+      document.getElementById("garage-sections")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+  }
+
   function recordCampaignOpen(campaign: GarageXCampaign) {
     window.localStorage.setItem(campaignOpenKey(campaign.id), new Date().toISOString());
   }
@@ -1073,6 +1081,30 @@ export default function CirclesGaragePage() {
 
   return (
     <main className="garage-theme relative isolate min-h-screen overflow-hidden pb-16 text-ink dark:text-white">
+      <div className="fixed right-3 top-3 z-50 flex max-w-[calc(100vw-1.5rem)] items-center gap-2 sm:right-5 sm:top-4">
+        <LanguageSwitcher className="rounded-2xl border border-ink/10 bg-white/80 px-2 py-1.5 shadow-[0_18px_55px_-32px_rgba(20,20,24,0.75)] backdrop-blur-xl dark:border-white/10 dark:bg-[#202024]/90" />
+        <button
+          type="button"
+          onClick={() => openGarageSection("profile")}
+          className="inline-flex h-11 max-w-[150px] items-center gap-2 rounded-2xl border border-ink/10 bg-white/80 px-2.5 text-sm font-black text-ink shadow-[0_18px_55px_-32px_rgba(20,20,24,0.75)] backdrop-blur-xl transition hover:border-marine/25 hover:bg-white dark:border-white/10 dark:bg-[#202024]/90 dark:text-white dark:hover:bg-white/15 sm:max-w-[210px]"
+          title="Profile"
+          aria-label="Open profile"
+        >
+          {circlesAvatarUrl ? (
+            <img
+              src={circlesAvatarUrl}
+              alt={circlesDisplayName}
+              className="h-8 w-8 shrink-0 rounded-full border border-ink/10 object-cover dark:border-white/10"
+            />
+          ) : (
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink text-white dark:bg-white dark:text-ink">
+              <Wallet className="h-4 w-4" />
+            </span>
+          )}
+          <span className="hidden min-w-0 truncate sm:block">{loading ? "loading" : circlesDisplayName}</span>
+        </button>
+      </div>
+
       <section className="garage-header sticky top-0 z-30 border-b border-ink/10 bg-sand/90 pt-14 backdrop-blur-xl dark:border-white/10 dark:bg-[#0a0a0a]/90 sm:pt-0">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <Link href="/" className="flex items-center gap-3">
@@ -1238,7 +1270,7 @@ export default function CirclesGaragePage() {
             />
           </div>
 
-          <div className="grid gap-2 rounded-lg border border-ink/10 bg-[#fbfaf6] p-2 shadow-sm dark:border-white/10 dark:bg-white/5 sm:grid-cols-2 xl:grid-cols-4">
+          <div id="garage-sections" className="grid scroll-mt-24 gap-2 rounded-lg border border-ink/10 bg-[#fbfaf6] p-2 shadow-sm dark:border-white/10 dark:bg-white/5 sm:grid-cols-2 xl:grid-cols-4">
             <button
               type="button"
               onClick={() => setGarageSection("boosts")}
