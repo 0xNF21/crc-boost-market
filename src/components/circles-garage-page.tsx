@@ -1080,13 +1080,13 @@ export default function CirclesGaragePage() {
   }
 
   return (
-    <main className="garage-theme relative isolate min-h-screen overflow-hidden pb-16 text-ink dark:text-white">
-      <div className="fixed right-3 top-3 z-50 flex max-w-[calc(100vw-1.5rem)] items-center gap-2 sm:right-5 sm:top-4">
-        <LanguageSwitcher className="rounded-2xl border border-ink/10 bg-white/80 px-2 py-1.5 shadow-[0_18px_55px_-32px_rgba(20,20,24,0.75)] backdrop-blur-xl dark:border-white/10 dark:bg-[#202024]/90" />
+    <main className="garage-theme relative isolate min-h-screen w-full max-w-full overflow-x-hidden pb-16 text-ink dark:text-white">
+      <div className="fixed left-3 right-3 top-3 z-50 flex max-w-[calc(100vw-1.5rem)] items-center justify-end gap-2 sm:left-auto sm:right-5 sm:top-4">
+        <LanguageSwitcher className="shrink-0 rounded-2xl border border-ink/10 bg-white/80 px-2 py-1.5 shadow-[0_18px_55px_-32px_rgba(20,20,24,0.75)] backdrop-blur-xl dark:border-white/10 dark:bg-[#202024]/90" />
         <button
           type="button"
           onClick={() => openGarageSection("profile")}
-          className="inline-flex h-11 max-w-[150px] items-center gap-2 rounded-2xl border border-ink/10 bg-white/80 px-2.5 text-sm font-black text-ink shadow-[0_18px_55px_-32px_rgba(20,20,24,0.75)] backdrop-blur-xl transition hover:border-marine/25 hover:bg-white dark:border-white/10 dark:bg-[#202024]/90 dark:text-white dark:hover:bg-white/15 sm:max-w-[210px]"
+          className="inline-flex h-11 max-w-[150px] shrink-0 items-center gap-2 rounded-2xl border border-ink/10 bg-white/80 px-2.5 text-sm font-black text-ink shadow-[0_18px_55px_-32px_rgba(20,20,24,0.75)] backdrop-blur-xl transition hover:border-marine/25 hover:bg-white dark:border-white/10 dark:bg-[#202024]/90 dark:text-white dark:hover:bg-white/15 sm:max-w-[210px]"
           title="Profile"
           aria-label="Open profile"
         >
@@ -1117,7 +1117,7 @@ export default function CirclesGaragePage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl space-y-6 px-4 py-6">
+      <section className="mx-auto w-full max-w-7xl space-y-6 px-4 py-6">
           <div className="garage-hero relative overflow-hidden rounded-2xl border border-ink/5 bg-white/70 p-6 text-ink shadow-[0_24px_70px_-48px_rgba(37,27,159,0.55)] backdrop-blur dark:border-white/10 dark:bg-white/5 dark:text-white sm:p-7">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div>
@@ -1493,8 +1493,8 @@ export default function CirclesGaragePage() {
           )}
 
           {garageSection === "profile" && (
-            <div className="grid gap-6 lg:grid-cols-[380px_minmax(0,1fr)]">
-          <div className="rounded-lg border border-ink/10 bg-[#fbfaf6] p-6 shadow-sm dark:border-white/10 dark:bg-white/5">
+            <div className="grid min-w-0 gap-6 lg:grid-cols-[380px_minmax(0,1fr)]">
+          <div className="min-w-0 rounded-lg border border-ink/10 bg-[#fbfaf6] p-5 shadow-sm dark:border-white/10 dark:bg-white/5 sm:p-6">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45 dark:text-white/45">
@@ -1511,18 +1511,18 @@ export default function CirclesGaragePage() {
                 {copied ? "Copied" : "Copy"}
               </button>
             </div>
-            <code className="mt-5 block truncate rounded-md bg-[#f0ede5] px-3 py-2.5 text-xs font-bold text-ink/65 dark:bg-black/20 dark:text-white/70">
+            <code className="mt-5 block min-w-0 max-w-full truncate rounded-md bg-[#f0ede5] px-3 py-2.5 text-xs font-bold text-ink/65 dark:bg-black/20 dark:text-white/70">
               {inviteLink}
             </code>
             <p className="mt-3 text-sm font-bold leading-6 text-ink/55 dark:text-white/58">
               Share this Circles-name link. When a new wallet connects from it and completes verified boost missions, you unlock referral CRC for that invited user.
             </p>
-            <div className="mt-5 grid grid-cols-3 gap-3">
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
               <MiniStat label="Invited" value={formatNumber(referrals.mine.total)} />
               <MiniStat label="Activated" value={formatNumber(referrals.rewards.activatedWallets)} />
               <MiniStat label="Bonus" value={`${formatNumber(referrals.rewards.crcEarned)} CRC`} />
             </div>
-            <div className="mt-5 rounded-lg border border-ink/10 bg-[#f0ede5] p-4 dark:border-white/10 dark:bg-white/5">
+            <div className="mt-5 min-w-0 rounded-lg border border-ink/10 bg-[#f0ede5] p-4 dark:border-white/10 dark:bg-white/5">
               <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.16em] text-ink/45 dark:text-white/45">
@@ -1538,7 +1538,7 @@ export default function CirclesGaragePage() {
                 {referrals.milestones.map((milestone) => (
                   <div
                     key={milestone.threshold}
-                    className="grid gap-3 rounded-md border border-ink/10 bg-[#fbfaf6] p-3 dark:border-white/10 dark:bg-black/20 sm:grid-cols-[minmax(0,1fr)_auto]"
+                    className="grid min-w-0 gap-3 rounded-md border border-ink/10 bg-[#fbfaf6] p-3 dark:border-white/10 dark:bg-black/20 sm:grid-cols-[minmax(0,1fr)_auto]"
                   >
                     <div>
                       <p className="text-[10px] font-black uppercase tracking-[0.14em] text-ink/42 dark:text-white/42">
@@ -1571,7 +1571,7 @@ export default function CirclesGaragePage() {
             )}
           </div>
 
-          <div className="rounded-lg border border-ink/10 bg-[#fbfaf6] p-6 shadow-sm dark:border-white/10 dark:bg-white/5">
+          <div className="min-w-0 rounded-lg border border-ink/10 bg-[#fbfaf6] p-5 shadow-sm dark:border-white/10 dark:bg-white/5 sm:p-6">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45 dark:text-white/45">
