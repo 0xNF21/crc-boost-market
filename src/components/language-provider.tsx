@@ -70,7 +70,7 @@ export function LanguageSwitcher({ className }: { className?: string }) {
     <div className={`flex items-center gap-1 ${className || ""}`}>
       <button
         onClick={() => setLocale("fr")}
-        className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-bold transition-all ${
+        className={`flex h-8 items-center gap-1.5 rounded-lg px-1.5 text-xs font-bold transition-all sm:px-2 ${
           locale === "fr"
             ? "bg-ink/10 dark:bg-white/10 text-ink dark:text-white shadow-sm"
             : "text-ink/35 dark:text-white/35 hover:text-ink/60 dark:hover:text-white/60 hover:bg-ink/5 dark:hover:bg-white/5"
@@ -82,7 +82,7 @@ export function LanguageSwitcher({ className }: { className?: string }) {
       </button>
       <button
         onClick={() => setLocale("en")}
-        className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-bold transition-all ${
+        className={`flex h-8 items-center gap-1.5 rounded-lg px-1.5 text-xs font-bold transition-all sm:px-2 ${
           locale === "en"
             ? "bg-ink/10 dark:bg-white/10 text-ink dark:text-white shadow-sm"
             : "text-ink/35 dark:text-white/35 hover:text-ink/60 dark:hover:text-white/60 hover:bg-ink/5 dark:hover:bg-white/5"
@@ -104,7 +104,7 @@ function ThemeToggle() {
   return (
     <button
       onClick={toggleTheme}
-      className="ml-1 p-1.5 rounded-lg text-ink/50 dark:text-white/50 hover:bg-ink/5 dark:hover:bg-white/10 transition-all"
+      className="ml-0.5 flex h-8 w-8 items-center justify-center rounded-lg text-ink/50 transition-all hover:bg-ink/5 dark:text-white/50 dark:hover:bg-white/10 sm:ml-1"
       title={isDark ? "Light mode" : "Dark mode"}
     >
       {isDark ? (

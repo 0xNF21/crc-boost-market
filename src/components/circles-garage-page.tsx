@@ -1082,12 +1082,12 @@ export default function CirclesGaragePage() {
 
   return (
     <main className="garage-theme relative isolate min-h-screen w-full max-w-full overflow-x-hidden pb-16 text-ink dark:text-white">
-      <div className="fixed left-3 right-3 top-3 z-50 flex max-w-[calc(100vw-1.5rem)] items-center justify-end gap-2 sm:left-auto sm:right-5 sm:top-4">
-        <LanguageSwitcher className="shrink-0 rounded-2xl border border-ink/10 bg-white/80 px-2 py-1.5 shadow-[0_18px_55px_-32px_rgba(20,20,24,0.75)] backdrop-blur-xl dark:border-white/10 dark:bg-[#202024]/90" />
+      <div className="fixed left-2 right-2 top-3 z-50 flex max-w-[calc(100vw-1rem)] items-center justify-end gap-1.5 sm:left-auto sm:right-5 sm:top-4 sm:gap-2">
+        <LanguageSwitcher className="h-11 shrink-0 rounded-2xl border border-ink/10 bg-white/80 px-1.5 shadow-[0_18px_55px_-32px_rgba(20,20,24,0.75)] backdrop-blur-xl dark:border-white/10 dark:bg-[#202024]/90 sm:px-2" />
         <button
           type="button"
           onClick={() => openGarageSection("profile")}
-          className="inline-flex h-11 max-w-[150px] shrink-0 items-center gap-2 rounded-2xl border border-ink/10 bg-white/80 px-2.5 text-sm font-black text-ink shadow-[0_18px_55px_-32px_rgba(20,20,24,0.75)] backdrop-blur-xl transition hover:border-marine/25 hover:bg-white dark:border-white/10 dark:bg-[#202024]/90 dark:text-white dark:hover:bg-white/15 sm:max-w-[210px]"
+          className="inline-flex h-11 max-w-[126px] shrink-0 items-center gap-2 overflow-hidden rounded-2xl border border-ink/10 bg-white/80 px-2 text-sm font-black text-ink shadow-[0_18px_55px_-32px_rgba(20,20,24,0.75)] backdrop-blur-xl transition hover:border-marine/25 hover:bg-white dark:border-white/10 dark:bg-[#202024]/90 dark:text-white dark:hover:bg-white/15 sm:max-w-[210px] sm:px-2.5"
           title="Profile"
           aria-label="Open profile"
         >
@@ -1102,7 +1102,7 @@ export default function CirclesGaragePage() {
               <Wallet className="h-4 w-4" />
             </span>
           )}
-          <span className="hidden min-w-0 truncate sm:block">{loading ? "loading" : circlesDisplayName}</span>
+          <span className="min-w-0 truncate text-xs sm:text-sm">{loading ? "loading" : circlesDisplayName}</span>
         </button>
       </div>
 
@@ -1111,8 +1111,8 @@ export default function CirclesGaragePage() {
           <Link href="/" className="flex items-center gap-3">
             <Image src="/nf-society-logo.png" alt="NF Society" width={36} height={36} className="h-9 w-9 rounded-lg" />
             <div>
-              <p className="text-sm font-black uppercase tracking-[0.18em]">NF-SOCIETY</p>
-              <p className="text-xs font-bold text-ink/50 dark:text-white/55">CRC Boosts</p>
+              <p className="text-sm font-black uppercase tracking-[0.18em]">CRC Boosts</p>
+              <p className="text-xs font-bold text-ink/50 dark:text-white/55">by NF-Society</p>
             </div>
           </Link>
         </div>
