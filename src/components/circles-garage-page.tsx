@@ -1,0 +1,2864 @@
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Activity,
+  AlertTriangle,
+  ArrowUpRight,
+  BadgeCheck,
+  Check,
+  Clock3,
+  CircleDollarSign,
+  Copy,
+  ExternalLink,
+  MousePointerClick,
+  Loader2,
+  Megaphone,
+  Plus,
+  QrCode,
+  RefreshCw,
+  Repeat2,
+  SearchCheck,
+  ShieldCheck,
+  Target,
+  Trash2,
+  Trophy,
+  Wallet,
+} from "lucide-react";
+import { useAuthSession } from "@/components/auth-provider";
+import { useMiniApp } from "@/components/miniapp-provider";
+import { clientAuthHeaders } from "@/lib/client-auth-token";
+
+type LinkedXAccount = {
+  xUserId: string;
+  username: string;
+  displayName: string | null;
+  updatedAt: string;
+};
+
+type CirclesProfile = {
+  name?: string;
+  imageUrl?: string | null;
+};
+
+type GarageLeaderboardEntry = {
+  walletAddress: string;
+  xUsername: string | null;
+  actions: number;
+  crcEarned: number;
+  crcPending: number;
+  xReads: number;
+  lastClaimAt: string | null;
+};
+
+type GarageXStatus = {
+  wallet: string | null;
+  isAdmin: boolean;
+  xOAuthConfigured: boolean;
+  xApiConfigured: boolean;
+  linkedAccount: LinkedXAccount | null;
+  recentClaims: Array<{
+    id: number;
+    campaignId: number;
+    campaignTitle: string;
+    campaignRewardCrc: number;
+    campaignTweetUrl: string | null;
+    action: string;
+    status: string;
+    verificationEvidence: string | null;
+    verificationChecked: number;
+    payoutAvailableAt: string | null;
+    payoutStatus: string | null;
+    payoutTxHash: string | null;
+    createdAt: string;
+  }>;
+  global: {
+    claims: number;
+    wallets: number;
+    xAccounts: number;
+    crcPaid: number;
+    xReads: number;
+    activeCampaigns: number;
+  };
+  personal: {
+    verifiedActions: number;
+    crcEarned: number;
+    crcPending: number;
+    pendingSettlements: number;
+    xReads: number;
+  };
+  leaderboard: GarageLeaderboardEntry[];
+  settings: {
+    payoutDelaySeconds: number;
+    campaignFeeBps: number;
+  };
+  unavailable?: boolean;
+};
+
+type GarageReferralStatus = {
+  cycle: string;
+  milestones: Array<{ threshold: number; amountCrc: number }>;
+  global: {
+    total: number;
+    referrers: number;
+    wallets: number;
+  };
+  mine: {
+    total: number;
+  };
+  rewards: {
+    crcEarned: number;
+    pendingCrc: number;
+    activatedWallets: number;
+  };
+  recent: Array<{
+    id: number;
+    referrerAddress: string;
+    referredAddress: string;
+    createdAt: string;
+  }>;
+  unavailable?: boolean;
+};
+
+type GarageXCampaign = {
+  id: number;
+  slug: string;
+  title: string;
+  description: string | null;
+  action: "like" | "repost" | "quote" | "follow";
+  tweetId: string | null;
+  tweetUrl: string | null;
+  targetUsername: string | null;
+  rewardCrc: number;
+  budgetCrc: number;
+  maxClaims: number;
+  status: string;
+  createdByAddress: string | null;
+  fundingStatus: string;
+  fundingRequiredCrc: number;
+  platformFeeCrc: number;
+  fundingTxHash: string | null;
+  fundedAt: string | null;
+  createdAt: string;
+  stats: {
+    claims: number;
+    remainingClaims: number;
+    spentCrc: number;
+  };
+  claimedByMe?: {
+    status: string;
+    verificationEvidence: string | null;
+    verificationChecked: number;
+    payoutAvailableAt: string | null;
+    payoutStatus: string | null;
+    payoutTxHash: string | null;
+    createdAt: string;
+  } | null;
+  fundingPayment?: GarageCampaignFundingPayment | null;
+};
+
+type GarageCampaignFundingPayment = {
+  campaignId: number;
+  recipientAddress: string;
+  amountCrc: number;
+  rewardPoolCrc: number;
+  platformFeeCrc: number;
+  feeBps: number;
+  gameData: string;
+  paymentLink: string;
+  qrCode?: string | null;
+};
+
+const EMPTY_STATUS: GarageXStatus = {
+  wallet: null,
+  isAdmin: false,
+  xOAuthConfigured: false,
+  xApiConfigured: false,
+  linkedAccount: null,
+  recentClaims: [],
+  global: { claims: 0, wallets: 0, xAccounts: 0, crcPaid: 0, xReads: 0, activeCampaigns: 0 },
+  personal: { verifiedActions: 0, crcEarned: 0, crcPending: 0, pendingSettlements: 0, xReads: 0 },
+  leaderboard: [],
+  settings: { payoutDelaySeconds: 300, campaignFeeBps: 250 },
+};
+
+const EMPTY_REFERRALS: GarageReferralStatus = {
+  cycle: "cycle-01",
+  milestones: [
+    { threshold: 1, amountCrc: 0.2 },
+    { threshold: 3, amountCrc: 0.5 },
+    { threshold: 5, amountCrc: 1 },
+  ],
+  global: { total: 0, referrers: 0, wallets: 0 },
+  mine: { total: 0 },
+  rewards: { crcEarned: 0, pendingCrc: 0, activatedWallets: 0 },
+  recent: [],
+};
+
+const X_CONNECT_START_URL = "/api/garage/x/connect/start?returnTo=%2Fgarage";
+
+function isAddress(value: string | null | undefined): value is string {
+  return typeof value === "string" && /^0x[a-f0-9]{40}$/.test(value.toLowerCase());
+}
+
+const ACTION_LABELS: Record<GarageXCampaign["action"], string> = {
+  like: "Like",
+  repost: "Repost",
+  quote: "Quote",
+  follow: "Follow",
+};
+
+function shortAddress(address: string | null | undefined) {
+  if (!address) return "Connect";
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
+function formatNumber(value: number | null | undefined) {
+  if (value == null || !Number.isFinite(value)) return "-";
+  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(value);
+}
+
+function formatPercentFromBps(value: number | null | undefined) {
+  if (value == null || !Number.isFinite(value)) return "0%";
+  return `${formatNumber(value / 100)}%`;
+}
+
+function roundCrc(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+function parseXPostInput(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const direct = trimmed.match(/^\d{5,30}$/);
+  if (direct) {
+    return {
+      id: direct[0],
+      username: null,
+      url: `https://x.com/i/web/status/${direct[0]}`,
+    };
+  }
+
+  const match = trimmed.match(/(?:https?:\/\/)?(?:www\.)?(?:twitter\.com|x\.com)\/([^/?#]+)\/status\/(\d{5,30})/i);
+  if (!match) return null;
+  return {
+    id: match[2],
+    username: match[1] === "i" ? null : match[1],
+    url: `https://x.com/${match[1]}/status/${match[2]}`,
+  };
+}
+
+function campaignFundingPreview(params: { rewardCrc: string; maxClaims: string; feeBps: number }) {
+  const rewardCrc = Number(params.rewardCrc);
+  const maxClaims = Math.floor(Number(params.maxClaims));
+  if (!Number.isFinite(rewardCrc) || !Number.isFinite(maxClaims) || rewardCrc <= 0 || maxClaims <= 0) {
+    return { rewardPoolCrc: 0, platformFeeCrc: 0, totalCrc: 0 };
+  }
+  const rewardPoolCrc = roundCrc(rewardCrc * maxClaims);
+  const platformFeeCrc = roundCrc((rewardPoolCrc * params.feeBps) / 10_000);
+  return {
+    rewardPoolCrc,
+    platformFeeCrc,
+    totalCrc: roundCrc(rewardPoolCrc + platformFeeCrc),
+  };
+}
+
+function formatDate(value: string) {
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(value));
+  } catch {
+    return value;
+  }
+}
+
+function formatDateTime(value: string | null | undefined) {
+  if (!value) return null;
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(value));
+  } catch {
+    return value;
+  }
+}
+
+function formatDuration(ms: number) {
+  const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
+
+function formatDurationShort(seconds: number) {
+  if (!Number.isFinite(seconds) || seconds <= 0) return "instant";
+  if (seconds % 3600 === 0) return `${seconds / 3600}h`;
+  if (seconds % 60 === 0) return `${seconds / 60} min`;
+  return `${seconds}s`;
+}
+
+function shortHash(hash: string | null | undefined) {
+  if (!hash) return null;
+  return `${hash.slice(0, 8)}...${hash.slice(-6)}`;
+}
+
+function evidenceLabel(value: string | null | undefined): string {
+  if (!value) return "Verified";
+  if (value.startsWith("cache_")) return `Cached ${evidenceLabel(value.slice("cache_".length)).toLowerCase()}`;
+  if (value === "user_timeline_repost") return "User timeline repost";
+  if (value === "retweeted_by") return "Retweeter scan";
+  if (value === "quote_tweets") return "Quote lookup";
+  if (value === "liking_users") return "Like lookup";
+  if (value === "followers") return "Follower lookup";
+  return value.replace(/_/g, " ");
+}
+
+function claimTone(status: string | null | undefined) {
+  if (!status) return "bg-ink/5 text-ink/55 dark:bg-white/10 dark:text-white/55";
+  if (status === "paid" || status === "success" || status === "completed") {
+    return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
+  }
+  if (status === "verified_pending") return "bg-marine/10 text-marine dark:text-sky-300";
+  if (status.includes("failed")) return "bg-red-500/10 text-red-700 dark:text-red-300";
+  return "bg-citrus/10 text-citrus";
+}
+
+function claimCanTrigger(claim: GarageXCampaign["claimedByMe"]) {
+  if (!claim) return true;
+  if (claim.status === "verification_expired" || claim.status === "payout_failed") return true;
+  if (claim.status !== "verified_pending") return false;
+  if (!claim.payoutAvailableAt) return true;
+  return new Date(claim.payoutAvailableAt).getTime() <= Date.now();
+}
+
+function claimTimeRemaining(claim: GarageXCampaign["claimedByMe"], now: number) {
+  if (!claim || claim.status !== "verified_pending" || !claim.payoutAvailableAt) return 0;
+  return Math.max(0, new Date(claim.payoutAvailableAt).getTime() - now);
+}
+
+function claimStatusLabel(status: string) {
+  if (status === "verified_pending") return "settlement pending";
+  if (status === "verification_expired") return "re-check failed";
+  if (status === "payout_sending") return "sending CRC";
+  return status.replace(/_/g, " ");
+}
+
+function campaignButtonLabel(campaign: GarageXCampaign, verifying: boolean, unavailable: boolean) {
+  if (verifying) return "Verifying";
+  if (unavailable || campaign.id <= 0) return "Apply migration first";
+  if (campaign.claimedByMe) {
+    if (campaign.claimedByMe.status === "verified_pending") {
+      return claimCanTrigger(campaign.claimedByMe) ? "Re-check + send CRC" : "Settlement pending";
+    }
+    if (campaign.claimedByMe.status === "verification_expired") return "Verify again";
+    if (campaign.claimedByMe.status === "payout_failed") return "Retry payout";
+    if (campaign.claimedByMe.status === "paid") return "Claimed";
+    if (campaign.claimedByMe.status === "payout_sending") return "Sending CRC";
+    return "Claim recorded";
+  }
+  if (campaign.stats.remainingClaims <= 0) return "Budget spent";
+  return `Verify + claim ${formatNumber(campaign.rewardCrc)} CRC`;
+}
+
+type NoticeTone = "success" | "error";
+type GarageSection = "boosts" | "leaderboard" | "profile" | "creator";
+type CampaignFeedback = {
+  campaignId: number;
+  tone: NoticeTone;
+  message: string;
+  txHash?: string | null;
+};
+type FundingFeedback = CampaignFeedback;
+type FundingSentState = Record<number, string | null>;
+
+function campaignOpenKey(campaignId: number) {
+  return `nfs-garage-x-opened-at:${campaignId}`;
+}
+
+function fundingSentKey(campaignId: number) {
+  return `nfs-garage-funding-sent:${campaignId}`;
+}
+
+function hasFundingSent(sent: FundingSentState, campaignId: number) {
+  return Object.prototype.hasOwnProperty.call(sent, campaignId);
+}
+
+function referralCodeFromProfileName(name: string | null | undefined): string {
+  return (name || "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
+}
+
+export default function CirclesGaragePage() {
+  const { isAuthenticated, address, loading, openLogin } = useAuthSession();
+  const { isMiniApp, walletAddress: miniAppWalletAddress, sendPayment } = useMiniApp();
+  const [status, setStatus] = useState<GarageXStatus>(EMPTY_STATUS);
+  const [referrals, setReferrals] = useState<GarageReferralStatus>(EMPTY_REFERRALS);
+  const [campaigns, setCampaigns] = useState<GarageXCampaign[]>([]);
+  const [campaignsUnavailable, setCampaignsUnavailable] = useState(false);
+  const [loadingData, setLoadingData] = useState(true);
+  const [verifyingId, setVerifyingId] = useState<number | null>(null);
+  const [fundingPayment, setFundingPayment] = useState<GarageCampaignFundingPayment | null>(null);
+  const [fundingAction, setFundingAction] = useState<"pay" | "scan" | "cancel" | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [noticeTone, setNoticeTone] = useState<NoticeTone>("error");
+  const [noticeTxHash, setNoticeTxHash] = useState<string | null>(null);
+  const [campaignFeedback, setCampaignFeedback] = useState<CampaignFeedback | null>(null);
+  const [fundingFeedback, setFundingFeedback] = useState<FundingFeedback | null>(null);
+  const [fundingSentTxs, setFundingSentTxs] = useState<FundingSentState>({});
+  const [copied, setCopied] = useState(false);
+  const [visibleXLinkCampaignId, setVisibleXLinkCampaignId] = useState<number | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [garageSection, setGarageSection] = useState<GarageSection>("boosts");
+  const [leaderboardProfiles, setLeaderboardProfiles] = useState<Record<string, CirclesProfile>>({});
+  const [myProfile, setMyProfile] = useState<CirclesProfile | null>(null);
+  const [landingReferrer, setLandingReferrer] = useState<string | null>(null);
+  const [origin, setOrigin] = useState("");
+  const [now, setNow] = useState(() => Date.now());
+  const [createForm, setCreateForm] = useState({
+    title: "",
+    tweetUrl: "",
+    action: "repost" as GarageXCampaign["action"],
+    rewardCrc: "1",
+    budgetCrc: "25",
+    maxClaims: "25",
+    description: "",
+  });
+  const profileAddress = address ?? (isMiniApp ? miniAppWalletAddress : null);
+
+  const inviteLink = useMemo(() => {
+    if (!origin) return "";
+    if (!profileAddress) return `${origin}/garage`;
+    const profileCode = referralCodeFromProfileName(myProfile?.name);
+    const refCode = profileCode || profileAddress.toLowerCase();
+    return `${origin}/garage?ref=${encodeURIComponent(refCode)}`;
+  }, [myProfile?.name, origin, profileAddress]);
+
+  const createCost = useMemo(
+    () =>
+      campaignFundingPreview({
+        rewardCrc: createForm.rewardCrc,
+        maxClaims: createForm.maxClaims,
+        feeBps: status.settings.campaignFeeBps,
+      }),
+    [createForm.maxClaims, createForm.rewardCrc, status.settings.campaignFeeBps],
+  );
+
+  const createTweet = useMemo(() => parseXPostInput(createForm.tweetUrl), [createForm.tweetUrl]);
+  const createTitle = createForm.title.trim();
+  const createRewardCrc = Number(createForm.rewardCrc);
+  const createMaxClaims = Math.floor(Number(createForm.maxClaims));
+  const createBudgetValid =
+    Number.isFinite(createRewardCrc) &&
+    createRewardCrc >= 0.01 &&
+    createRewardCrc <= 100 &&
+    Number.isFinite(createMaxClaims) &&
+    createMaxClaims > 0 &&
+    createMaxClaims <= 10_000;
+  const createIssue = !createTitle
+    ? "Add a campaign title"
+    : !createTweet
+      ? "Paste a valid X post URL"
+      : !createBudgetValid
+        ? "Use 0.01-100 CRC and at least 1 payout"
+        : createCost.totalCrc <= 0
+          ? "Enter reward and max payouts"
+          : null;
+  const createReady = !createIssue;
+
+  const loadData = useCallback(async () => {
+    setLoadingData(true);
+    try {
+      const [statusRes, campaignsRes, referralsRes] = await Promise.all([
+        fetch("/api/garage/x/status", { cache: "no-store", credentials: "include", headers: clientAuthHeaders() }),
+        fetch("/api/garage/x/campaigns", { cache: "no-store", credentials: "include", headers: clientAuthHeaders() }),
+        fetch("/api/garage/referrals", { cache: "no-store", credentials: "include", headers: clientAuthHeaders() }),
+      ]);
+      const statusData = await statusRes.json();
+      const campaignsData = await campaignsRes.json();
+      const referralsData = await referralsRes.json();
+      const visibleCampaigns = Array.isArray(campaignsData?.campaigns) ? campaignsData.campaigns : [];
+      setStatus({ ...EMPTY_STATUS, ...statusData });
+      setReferrals({ ...EMPTY_REFERRALS, ...referralsData });
+      setCampaigns(visibleCampaigns);
+      const pendingPayment = visibleCampaigns.find(
+        (campaign: GarageXCampaign) => campaign.status === "pending_payment" && campaign.fundingPayment,
+      )?.fundingPayment ?? null;
+      setFundingPayment((current) =>
+        current && visibleCampaigns.some((campaign: GarageXCampaign) =>
+          campaign.id === current.campaignId && campaign.status === "pending_payment",
+        )
+          ? current
+          : pendingPayment,
+      );
+      setCampaignsUnavailable(Boolean(campaignsData?.unavailable));
+    } catch {
+      setStatus(EMPTY_STATUS);
+      setReferrals(EMPTY_REFERRALS);
+      setCampaigns([]);
+      setFundingPayment(null);
+      setCampaignsUnavailable(true);
+    } finally {
+      setLoadingData(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    setOrigin(window.location.origin);
+    void loadData();
+  }, [loadData, isAuthenticated, address]);
+
+  useEffect(() => {
+    const next: FundingSentState = {};
+    for (const campaign of campaigns) {
+      if (campaign.status !== "pending_payment") {
+        try {
+          window.localStorage.removeItem(fundingSentKey(campaign.id));
+        } catch {}
+        continue;
+      }
+
+      try {
+        const stored = window.localStorage.getItem(fundingSentKey(campaign.id));
+        if (stored) next[campaign.id] = stored === "sent" ? null : stored;
+      } catch {}
+    }
+    setFundingSentTxs((current) => ({ ...next, ...current }));
+  }, [campaigns]);
+
+  useEffect(() => {
+    if (!profileAddress) {
+      setMyProfile(null);
+      return;
+    }
+
+    let cancelled = false;
+    const normalized = profileAddress.toLowerCase();
+    void fetch("/api/profiles", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ addresses: [normalized] }),
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled) setMyProfile(data?.profiles?.[normalized] ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setMyProfile(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [profileAddress]);
+
+  useEffect(() => {
+    const addresses = Array.from(
+      new Set(status.leaderboard.map((entry) => entry.walletAddress.toLowerCase()).filter(isAddress)),
+    );
+
+    if (!addresses.length) {
+      setLeaderboardProfiles({});
+      return;
+    }
+
+    let cancelled = false;
+    void fetch("/api/profiles", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ addresses }),
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled) {
+          setLeaderboardProfiles(data?.profiles ?? {});
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setLeaderboardProfiles({});
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [status.leaderboard]);
+
+  useEffect(() => {
+    const rawRef = new URLSearchParams(window.location.search).get("ref")?.trim() ?? "";
+    const refCode = rawRef.toLowerCase();
+    if (!refCode) return;
+
+    if (isAddress(refCode)) {
+      window.localStorage.setItem("nfs-garage-referrer", refCode);
+      setLandingReferrer(refCode);
+      return;
+    }
+
+    const normalizedCode = referralCodeFromProfileName(refCode);
+    if (normalizedCode.length < 2) return;
+
+    let cancelled = false;
+    void fetch(`/api/profiles/search?q=${encodeURIComponent(normalizedCode)}`, { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled) return;
+        const results = Array.isArray(data?.results) ? data.results : [];
+        const match = results.find(
+          (profile: { name?: string; address?: string }) =>
+            referralCodeFromProfileName(profile.name) === normalizedCode && isAddress(profile.address ?? null),
+        );
+        const referrer = match?.address?.toLowerCase() ?? null;
+        if (!isAddress(referrer)) return;
+        window.localStorage.setItem("nfs-garage-referrer", referrer);
+        setLandingReferrer(referrer);
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated || !address) return;
+    const referredAddress = address.toLowerCase();
+    const referrer = landingReferrer ?? window.localStorage.getItem("nfs-garage-referrer")?.toLowerCase() ?? null;
+    if (!isAddress(referrer) || referrer === referredAddress) return;
+
+    const recordedKey = `nfs-garage-referral-recorded:${referredAddress}:${referrer}`;
+    if (window.localStorage.getItem(recordedKey)) return;
+
+    void fetch("/api/garage/referrals", {
+      method: "POST",
+      credentials: "include",
+      headers: clientAuthHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({
+        referrer,
+        landingPath: `${window.location.pathname}${window.location.search}`,
+      }),
+    })
+      .then(() => {
+        window.localStorage.setItem(recordedKey, "1");
+        void loadData();
+      })
+      .catch(() => {});
+  }, [isAuthenticated, address, landingReferrer, loadData]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const xStatus = params.get("x");
+    if (!xStatus) return;
+    const messages: Record<string, string> = {
+      linked: "X account linked.",
+      "oauth-missing": "X OAuth is not configured yet.",
+      "oauth-failed": "X connection failed.",
+      "oauth-client-missing": "X OAuth Client ID is missing.",
+      "oauth-client-secret-invalid": "X OAuth Client Secret is invalid or incomplete.",
+      "oauth-code-expired": "X authorization expired. Try again.",
+      "oauth-profile-failed": "X connected, but profile fetch failed.",
+      "oauth-redirect-mismatch": "X callback URL does not match the app settings.",
+      "oauth-save-failed": "X connected, but saving the account failed.",
+      "oauth-token-failed": "X token exchange failed.",
+      "wallet-session-lost": "Wallet session was lost during X connection.",
+      "x-already-linked": "This X account is already linked to another wallet.",
+    };
+    setNoticeTone(xStatus === "linked" ? "success" : "error");
+    setNoticeTxHash(null);
+    setNotice(messages[xStatus] ?? xStatus.replace(/-/g, " "));
+  }, []);
+
+  async function copyText(value: string) {
+    if (!value) return false;
+    try {
+      await navigator.clipboard.writeText(value);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async function copyInviteLink() {
+    const didCopy = await copyText(inviteLink);
+    if (didCopy) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } else {
+      setCopied(false);
+    }
+  }
+
+  async function startXConnection() {
+    if (isMiniApp) {
+      const standaloneUrl = origin ? `${origin}/garage` : "/garage";
+      const didCopy = await copyText(standaloneUrl);
+      setNoticeTone("success");
+      setNoticeTxHash(null);
+      setNotice(
+        didCopy
+          ? "Playground blocks X login popups. App link copied: open it outside the Playground, link X once, then come back."
+          : `Playground blocks X login popups. Open this outside the Playground to link X: ${standaloneUrl}`,
+      );
+      return;
+    }
+
+    if (!isAuthenticated) {
+      openLogin();
+      return;
+    }
+
+    window.location.assign(X_CONNECT_START_URL);
+  }
+
+  async function verifyCampaign(campaign: GarageXCampaign) {
+    if (!isAuthenticated) {
+      setCampaignFeedback({
+        campaignId: campaign.id,
+        tone: "error",
+        message: "Connect your Circles wallet first.",
+      });
+      openLogin();
+      return;
+    }
+    if (!status.linkedAccount) {
+      setCampaignFeedback({
+        campaignId: campaign.id,
+        tone: "error",
+        message: "Link your X account first.",
+      });
+      void startXConnection();
+      return;
+    }
+
+    setCampaignFeedback(null);
+    setVerifyingId(campaign.id);
+    try {
+      const openedAt = window.localStorage.getItem(campaignOpenKey(campaign.id));
+      const res = await fetch("/api/garage/x/verify", {
+        method: "POST",
+        credentials: "include",
+        headers: clientAuthHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ campaignId: campaign.id, openedAt }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const errorCopy: Record<string, string> = {
+          ACTION_NOT_FOUND: "Action not found on X. Keep the repost live and try again.",
+          X_ACCOUNT_REQUIRED: "Link your X account first.",
+          X_API_NOT_CONFIGURED: "X API token is missing.",
+          X_API_NO_CREDITS: "X API account has no credits for verification.",
+          X_API_ACCESS_DENIED: "X API token cannot access this endpoint.",
+          X_API_RATE_LIMITED: "X API rate limit reached. Try again later.",
+          X_API_ERROR: "X API verification failed.",
+          CAMPAIGN_EXHAUSTED: "Campaign budget is spent.",
+        };
+        setCampaignFeedback({
+          campaignId: campaign.id,
+          tone: "error",
+          message: errorCopy[data?.error] ?? data?.error ?? "Verification failed.",
+        });
+        return;
+      }
+      if (data?.status === "verified_pending" || data?.status === "settlement_pending") {
+        const when = formatDateTime(data?.availableAt ?? data?.claim?.payoutAvailableAt);
+        setCampaignFeedback({
+          campaignId: campaign.id,
+          tone: "success",
+          message: when
+            ? `Action verified. CRC unlocks after re-check at ${when}.`
+            : "Action verified. CRC is waiting for settlement re-check.",
+        });
+      } else {
+        const txHash = data?.claim?.payoutTxHash ?? data?.payout?.transferTxHash ?? null;
+        setCampaignFeedback({
+          campaignId: campaign.id,
+          tone: "success",
+          txHash: typeof txHash === "string" ? txHash : null,
+          message:
+            data?.status === "paid"
+              ? "CRC sent on-chain. Wallet apps can take a few seconds to refresh."
+              : "Action verified. Payout is being processed.",
+        });
+      }
+      await loadData();
+    } catch {
+      setCampaignFeedback({
+        campaignId: campaign.id,
+        tone: "error",
+        message: "Verification failed.",
+      });
+    } finally {
+      setVerifyingId(null);
+    }
+  }
+
+  async function createCampaign(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!createReady) {
+      setNoticeTone("error");
+      setNoticeTxHash(null);
+      setNotice(createIssue ?? "Campaign draft is incomplete.");
+      return;
+    }
+
+    setCreating(true);
+    setNotice(null);
+    setNoticeTxHash(null);
+    try {
+      const res = await fetch("/api/garage/x/campaigns", {
+        method: "POST",
+        credentials: "include",
+        headers: clientAuthHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({
+          ...createForm,
+          budgetCrc: createCost.rewardPoolCrc,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setNoticeTone("error");
+        setNoticeTxHash(null);
+        setNotice(data?.error ?? "Campaign creation failed.");
+        return;
+      }
+      setCreateForm({
+        title: "",
+        tweetUrl: "",
+        action: "repost",
+        rewardCrc: "1",
+        budgetCrc: "25",
+        maxClaims: "25",
+        description: "",
+      });
+      setNoticeTone("success");
+      setNoticeTxHash(null);
+      setGarageSection("creator");
+      const payment = data?.campaign?.fundingPayment ?? null;
+      if (payment) {
+        setFundingPayment(payment);
+        setNotice(`Campaign drafted. Pay ${formatNumber(payment.amountCrc)} CRC to activate it.`);
+      } else {
+        setNotice("Campaign created.");
+      }
+      await loadData();
+    } catch {
+      setNoticeTone("error");
+      setNoticeTxHash(null);
+      setNotice("Campaign creation failed.");
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  function rememberFundingSent(campaignId: number, txHash: string | null) {
+    setFundingSentTxs((current) => ({ ...current, [campaignId]: txHash }));
+    try {
+      window.localStorage.setItem(fundingSentKey(campaignId), txHash || "sent");
+    } catch {}
+  }
+
+  function clearFundingSent(campaignId: number) {
+    setFundingSentTxs((current) => {
+      const next = { ...current };
+      delete next[campaignId];
+      return next;
+    });
+    try {
+      window.localStorage.removeItem(fundingSentKey(campaignId));
+    } catch {}
+  }
+
+  async function payCampaignFunding(paymentOverride?: GarageCampaignFundingPayment) {
+    const payment = paymentOverride ?? fundingPayment;
+    if (!payment) return;
+    if (hasFundingSent(fundingSentTxs, payment.campaignId)) {
+      setFundingFeedback({
+        campaignId: payment.campaignId,
+        tone: "success",
+        txHash: fundingSentTxs[payment.campaignId],
+        message: "Payment already signed. Use Check payment to activate the boost.",
+      });
+      return;
+    }
+    setFundingPayment(payment);
+    setFundingAction("pay");
+    setNotice(null);
+    setNoticeTxHash(null);
+    setFundingFeedback(null);
+    try {
+      if (isMiniApp) {
+        const hashes = await sendPayment(payment.recipientAddress, payment.amountCrc, payment.gameData);
+        const txHash = hashes[hashes.length - 1] ?? null;
+        rememberFundingSent(payment.campaignId, txHash);
+        setFundingFeedback({
+          campaignId: payment.campaignId,
+          tone: "success",
+          txHash,
+          message: "Payment signed with Circles passkey. Check payment to activate the boost.",
+        });
+        return;
+      }
+
+      window.open(payment.paymentLink, "_blank", "noopener,noreferrer");
+      setFundingFeedback({
+        campaignId: payment.campaignId,
+        tone: "success",
+        message: "Payment checkout opened. After confirming, check payment to activate.",
+      });
+    } catch {
+      setFundingFeedback({
+        campaignId: payment.campaignId,
+        tone: "error",
+        message: isMiniApp
+          ? "Passkey payment failed. You can still copy the checkout link below and pay outside the Playground."
+          : "Payment checkout could not be opened.",
+      });
+    } finally {
+      setFundingAction(null);
+    }
+  }
+
+  async function scanCampaignFunding(paymentOverride?: GarageCampaignFundingPayment) {
+    const payment = paymentOverride ?? fundingPayment;
+    if (!payment) return;
+    setFundingPayment(payment);
+    setFundingAction("scan");
+    setNotice(null);
+    setNoticeTxHash(null);
+    setFundingFeedback(null);
+    try {
+      const res = await fetch("/api/garage/x/campaigns/scan", {
+        method: "POST",
+        credentials: "include",
+        headers: clientAuthHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({
+          campaignId: payment.campaignId,
+          txHash: fundingSentTxs[payment.campaignId] ?? null,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.activated) {
+        setFundingFeedback({
+          campaignId: payment.campaignId,
+          tone: "error",
+          message:
+            data?.error === "PAYMENT_NOT_FOUND"
+              ? hasFundingSent(fundingSentTxs, payment.campaignId)
+                ? "Payment not indexed yet. Wait a few seconds, then check again."
+                : "Payment not detected yet."
+              : data?.error ?? "Activation failed.",
+        });
+        return;
+      }
+      const txHash = typeof data?.txHash === "string" ? data.txHash : null;
+      setFundingFeedback({
+        campaignId: payment.campaignId,
+        tone: "success",
+        txHash,
+        message: "Campaign funded and live.",
+      });
+      clearFundingSent(payment.campaignId);
+      setFundingPayment(null);
+      await loadData();
+    } catch {
+      setFundingFeedback({
+        campaignId: payment.campaignId,
+        tone: "error",
+        message: "Activation failed.",
+      });
+    } finally {
+      setFundingAction(null);
+    }
+  }
+
+  async function cancelCampaignFunding(paymentOverride?: GarageCampaignFundingPayment) {
+    const payment = paymentOverride ?? fundingPayment;
+    if (!payment) return;
+    if (hasFundingSent(fundingSentTxs, payment.campaignId)) {
+      setFundingFeedback({
+        campaignId: payment.campaignId,
+        tone: "error",
+        txHash: fundingSentTxs[payment.campaignId],
+        message: "Payment already signed. Check payment instead of cancelling to avoid losing the funded boost.",
+      });
+      return;
+    }
+    const confirmed = window.confirm("Cancel this unpaid campaign draft?");
+    if (!confirmed) return;
+
+    setFundingPayment(payment);
+    setFundingAction("cancel");
+    setNotice(null);
+    setNoticeTxHash(null);
+    try {
+      const res = await fetch(`/api/garage/x/campaigns/${payment.campaignId}`, {
+        method: "DELETE",
+        credentials: "include",
+        headers: clientAuthHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.cancelled) {
+        setNoticeTone("error");
+        setNoticeTxHash(typeof data?.txHash === "string" ? data.txHash : null);
+        setNotice(
+          data?.error === "PAYMENT_ALREADY_DETECTED"
+            ? "Payment already detected. Activate the boost instead."
+            : data?.error ?? "Campaign cancellation failed.",
+        );
+        return;
+      }
+      setNoticeTone("success");
+      setNotice("Campaign draft cancelled.");
+      setFundingFeedback(null);
+      setFundingPayment((current) => (current?.campaignId === payment.campaignId ? null : current));
+      await loadData();
+    } catch {
+      setNoticeTone("error");
+      setNotice("Campaign cancellation failed.");
+    } finally {
+      setFundingAction(null);
+    }
+  }
+
+  const activeCampaigns = campaigns.filter((campaign) => campaign.status === "active");
+  const creatorCampaigns = address
+    ? campaigns.filter((campaign) => campaign.createdByAddress?.toLowerCase() === address.toLowerCase())
+    : [];
+  const primaryCampaign = activeCampaigns[0] ?? null;
+  const circlesDisplayName = myProfile?.name?.trim() || (profileAddress ? shortAddress(profileAddress) : "Connect wallet");
+  const circlesAvatarUrl = myProfile?.imageUrl || null;
+  const primaryFundingSent = fundingPayment ? hasFundingSent(fundingSentTxs, fundingPayment.campaignId) : false;
+
+  function recordCampaignOpen(campaign: GarageXCampaign) {
+    window.localStorage.setItem(campaignOpenKey(campaign.id), new Date().toISOString());
+  }
+
+  async function openCampaignOnX(campaign: GarageXCampaign) {
+    if (!campaign.tweetUrl) return;
+    recordCampaignOpen(campaign);
+
+    if (isMiniApp) {
+      const didCopy = await copyText(campaign.tweetUrl);
+      setVisibleXLinkCampaignId(campaign.id);
+      setNoticeTone("success");
+      setNoticeTxHash(null);
+      setNotice(
+        didCopy
+          ? "X post link copied and shown inside the card. Open it outside the Playground, complete the action, then come back to verify."
+          : "Playground blocks external links and may block copy. The X link is shown inside the card so you can select it manually.",
+      );
+      return;
+    }
+
+    window.open(campaign.tweetUrl, "_blank", "noopener,noreferrer");
+  }
+
+  return (
+    <main className="garage-theme relative isolate min-h-screen overflow-hidden pb-16 text-ink dark:text-white">
+      <section className="garage-header sticky top-0 z-30 border-b border-ink/10 bg-sand/90 pt-14 backdrop-blur-xl dark:border-white/10 dark:bg-[#0a0a0a]/90 sm:pt-0">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <Link href="/" className="flex items-center gap-3">
+            <Image src="/nf-society-logo.png" alt="NF Society" width={36} height={36} className="h-9 w-9 rounded-lg" />
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.18em]">NF-SOCIETY</p>
+              <p className="text-xs font-bold text-ink/50 dark:text-white/55">CRC Boosts</p>
+            </div>
+          </Link>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl space-y-6 px-4 py-6">
+          <div className="garage-hero relative overflow-hidden rounded-2xl border border-ink/5 bg-white/70 p-6 text-ink shadow-[0_24px_70px_-48px_rgba(37,27,159,0.55)] backdrop-blur dark:border-white/10 dark:bg-white/5 dark:text-white sm:p-7">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="inline-flex items-center gap-2 rounded-full bg-marine/10 px-3 py-1 text-xs font-black uppercase tracking-[0.16em] text-marine">
+                  <CircleDollarSign className="h-4 w-4" />
+                  CRC attention market
+                </p>
+                <h1 className="mt-4 max-w-3xl font-display text-4xl font-black leading-[0.95] tracking-tight sm:text-5xl">
+                  Boost real X attention with CRC.
+                </h1>
+                <p className="mt-4 max-w-2xl text-sm font-bold leading-6 text-ink/60 dark:text-white/60">
+                  Creators fund a CRC reward pool. Users complete verified X actions and receive on-chain CRC only after the action survives settlement.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <ProofPill
+                    icon={BadgeCheck}
+                    label="X verified"
+                    value={status.xApiConfigured ? "live" : "setup"}
+                    tone={status.xApiConfigured ? "success" : "warn"}
+                  />
+                  <ProofPill
+                    icon={Clock3}
+                    label="Settlement"
+                    value={formatDurationShort(status.settings.payoutDelaySeconds)}
+                    tone="neutral"
+                  />
+                  <ProofPill
+                    icon={CircleDollarSign}
+                    label="CRC payout"
+                    value="on-chain"
+                    tone="success"
+                  />
+                </div>
+              </div>
+              <div className="grid gap-3 lg:w-[280px]">
+                <button
+                  type="button"
+                  onClick={isAuthenticated ? undefined : openLogin}
+                    className="flex items-center gap-3 rounded-2xl border border-ink/10 bg-white/70 p-3 text-left text-ink transition hover:border-marine/25 hover:bg-white dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/15"
+                >
+                  {circlesAvatarUrl ? (
+                    <img
+                      src={circlesAvatarUrl}
+                      alt={circlesDisplayName}
+                      className="h-10 w-10 shrink-0 rounded-2xl border border-ink/10 object-cover dark:border-white/10"
+                    />
+                  ) : (
+                    <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-marine/10 text-marine">
+                      <Wallet className="h-5 w-5" />
+                    </span>
+                  )}
+                  <span className="min-w-0">
+                    <span className="block text-[10px] font-black uppercase tracking-[0.14em] text-ink/45 dark:text-white/45">
+                      {myProfile?.name ? "Circles" : "Wallet"}
+                    </span>
+                    <span className="block truncate text-[13px] font-black leading-tight">
+                      {loading ? "loading" : circlesDisplayName}
+                    </span>
+                    {myProfile?.name && profileAddress && (
+                      <span className="mt-0.5 block truncate text-[10px] font-bold text-ink/42 dark:text-white/42">
+                        {shortAddress(profileAddress)}
+                      </span>
+                    )}
+                  </span>
+                </button>
+                <a
+                  href={isAuthenticated ? X_CONNECT_START_URL : "#connect-wallet"}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    void startXConnection();
+                  }}
+                  className="flex items-center gap-3 rounded-2xl border border-ink/10 bg-white/70 p-3 text-left text-ink transition hover:border-marine/25 hover:bg-white dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/15"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-ink text-white dark:bg-white dark:text-ink">
+                    X
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-[10px] font-black uppercase tracking-[0.14em] text-white/45">
+                      Account
+                    </span>
+                    <span className="block truncate text-[13px] font-black leading-tight">
+                      {status.linkedAccount ? `@${status.linkedAccount.username}` : "Link X"}
+                    </span>
+                  </span>
+                </a>
+              </div>
+            </div>
+
+            {notice && (
+              <div
+                className={`mt-4 flex items-center gap-2 rounded-lg border px-4 py-3 text-sm font-bold ${
+                  noticeTone === "success"
+                    ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200"
+                    : "border-red-500/20 bg-red-500/10 text-red-800 dark:text-red-200"
+                }`}
+              >
+                {noticeTone === "success" ? (
+                  <Check className="h-4 w-4" />
+                ) : (
+                  <AlertTriangle className="h-4 w-4" />
+                )}
+                <span className="min-w-0">
+                  {notice}
+                  {noticeTxHash && (
+                    <a
+                      href={`https://gnosisscan.io/tx/${noticeTxHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="ml-2 inline-flex items-center gap-1 font-black underline underline-offset-2"
+                    >
+                      View tx
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  )}
+                </span>
+              </div>
+            )}
+            {campaignsUnavailable && (
+              <div className="mt-4 flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-800 dark:text-red-200">
+                <AlertTriangle className="h-4 w-4" />
+                Run database migration 0020 before live claims.
+              </div>
+            )}
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <DashboardStat
+              icon={Trophy}
+              label="Verified claims"
+              value={formatNumber(status.global.claims)}
+              detail={`${formatNumber(status.global.wallets)} wallets`}
+            />
+            <DashboardStat
+              icon={CircleDollarSign}
+              label="CRC paid out"
+              value={`${formatNumber(status.global.crcPaid)} CRC`}
+              detail="on-chain payouts"
+            />
+            <DashboardStat
+              icon={Target}
+              label="Live boosts"
+              value={`${formatNumber(status.global.activeCampaigns)} live`}
+              detail={primaryCampaign?.title ?? "No boost running"}
+            />
+            <DashboardStat
+              icon={Activity}
+              label="X API reads"
+              value={formatNumber(status.global.xReads)}
+              detail="verification cost signal"
+            />
+          </div>
+
+          <div className="grid gap-2 rounded-lg border border-ink/10 bg-[#fbfaf6] p-2 shadow-sm dark:border-white/10 dark:bg-white/5 sm:grid-cols-2 xl:grid-cols-4">
+            <button
+              type="button"
+              onClick={() => setGarageSection("boosts")}
+              aria-pressed={garageSection === "boosts"}
+              className={`flex items-center gap-3 rounded-md px-4 py-3 text-left transition ${
+                garageSection === "boosts"
+                  ? "bg-ink text-white dark:bg-white dark:text-ink"
+                  : "text-ink/55 hover:bg-ink/5 hover:text-ink dark:text-white/55 dark:hover:bg-white/10 dark:hover:text-white"
+              }`}
+            >
+              <Target className="h-4 w-4 shrink-0" />
+              <span>
+                <span className="block text-sm font-black">Boosts</span>
+                <span className="block text-[11px] font-bold opacity-60">earn CRC</span>
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setGarageSection("leaderboard")}
+              aria-pressed={garageSection === "leaderboard"}
+              className={`flex items-center gap-3 rounded-md px-4 py-3 text-left transition ${
+                garageSection === "leaderboard"
+                  ? "bg-ink text-white dark:bg-white dark:text-ink"
+                  : "text-ink/55 hover:bg-ink/5 hover:text-ink dark:text-white/55 dark:hover:bg-white/10 dark:hover:text-white"
+              }`}
+            >
+              <Trophy className="h-4 w-4 shrink-0" />
+              <span>
+                <span className="block text-sm font-black">Leaderboard</span>
+                <span className="block text-[11px] font-bold opacity-60">top CRC earners</span>
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setGarageSection("profile")}
+              aria-pressed={garageSection === "profile"}
+              className={`flex items-center gap-3 rounded-md px-4 py-3 text-left transition ${
+                garageSection === "profile"
+                  ? "bg-ink text-white dark:bg-white dark:text-ink"
+                  : "text-ink/55 hover:bg-ink/5 hover:text-ink dark:text-white/55 dark:hover:bg-white/10 dark:hover:text-white"
+              }`}
+            >
+              <Wallet className="h-4 w-4 shrink-0" />
+              <span>
+                <span className="block text-sm font-black">Profile</span>
+                <span className="block text-[11px] font-bold opacity-60">referrals + history</span>
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setGarageSection("creator")}
+              aria-pressed={garageSection === "creator"}
+              className={`flex items-center gap-3 rounded-md px-4 py-3 text-left transition ${
+                garageSection === "creator"
+                  ? "bg-ink text-white dark:bg-white dark:text-ink"
+                  : "text-ink/55 hover:bg-ink/5 hover:text-ink dark:text-white/55 dark:hover:bg-white/10 dark:hover:text-white"
+              }`}
+            >
+              <Plus className="h-4 w-4 shrink-0" />
+              <span>
+                <span className="block text-sm font-black">Creator</span>
+                <span className="block text-[11px] font-bold opacity-60">fund attention</span>
+              </span>
+            </button>
+          </div>
+
+          {garageSection === "boosts" && (
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+              <div className="space-y-6">
+          <div className="grid gap-5 rounded-lg border border-ink/10 bg-[#f7f7fa] p-5 shadow-sm dark:border-white/10 dark:bg-white/5 md:grid-cols-3">
+            <FlowStep
+              icon={MousePointerClick}
+              step="01"
+              title="Open X"
+              detail="Open the campaign post and complete the requested action."
+            />
+            <FlowStep
+              icon={SearchCheck}
+              step="02"
+              title="Verify"
+              detail="Return here so the app checks your X account proof."
+            />
+            <FlowStep
+              icon={CircleDollarSign}
+              step="03"
+              title="Receive CRC"
+              detail={`Keep it live for ${formatDurationShort(status.settings.payoutDelaySeconds)}; removed actions do not unlock payout.`}
+            />
+          </div>
+
+          <div className="grid gap-6">
+            {loadingData && activeCampaigns.length === 0 ? (
+              <div className="rounded-lg border border-ink/10 bg-[#fbfaf6] p-10 text-center shadow-sm dark:border-white/10 dark:bg-white/5">
+                <Loader2 className="mx-auto h-8 w-8 animate-spin text-marine" />
+              </div>
+            ) : activeCampaigns.length === 0 ? (
+              <div className="rounded-lg border border-ink/10 bg-[#fbfaf6] p-8 shadow-sm dark:border-white/10 dark:bg-white/5">
+                <div className="mx-auto flex max-w-xl flex-col items-center text-center">
+                  <span className="inline-flex h-12 w-12 items-center justify-center rounded-lg border border-ink/10 bg-[#f0ede5] text-ink/55 dark:border-white/10 dark:bg-white/10 dark:text-white/60">
+                    <Megaphone className="h-6 w-6" />
+                  </span>
+                  <p className="mt-4 font-display text-2xl font-black">No live boosts yet.</p>
+                  <p className="mt-2 text-sm font-bold leading-6 text-ink/55 dark:text-white/58">
+                    Launch a creator-funded CRC boost, or check the leaderboard once users start completing verified missions.
+                  </p>
+                  <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+                    <button
+                      type="button"
+                      onClick={() => setGarageSection("creator")}
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-ink px-4 text-sm font-black text-white transition hover:bg-ink/90 dark:bg-white dark:text-ink"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Create boost
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setGarageSection("leaderboard")}
+                      className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-ink/10 bg-[#f0ede5] px-4 text-sm font-black text-ink transition hover:bg-white dark:border-white/10 dark:bg-white/10 dark:text-white"
+                    >
+                      <Trophy className="h-4 w-4" />
+                      Open leaderboard
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              activeCampaigns.map((campaign) => (
+                <CampaignCard
+                  key={campaign.slug}
+                  campaign={campaign}
+                  isMiniApp={isMiniApp}
+                  showXLink={visibleXLinkCampaignId === campaign.id}
+                  verifying={verifyingId === campaign.id}
+                  disabled={
+                    campaignsUnavailable ||
+                    campaign.id <= 0 ||
+                    verifyingId === campaign.id ||
+                    Boolean(claimTimeRemaining(campaign.claimedByMe ?? null, now)) ||
+                    !claimCanTrigger(campaign.claimedByMe ?? null) ||
+                    campaign.stats.remainingClaims <= 0
+                  }
+                  onVerify={() => verifyCampaign(campaign)}
+                  onOpen={() => void openCampaignOnX(campaign)}
+                  now={now}
+                  settlementSeconds={status.settings.payoutDelaySeconds}
+                  feedback={campaignFeedback?.campaignId === campaign.id ? campaignFeedback : null}
+                />
+              ))
+            )}
+          </div>
+        </div>
+
+        <aside className="space-y-6">
+          <div className="rounded-lg border border-[#39363a] bg-[#242329] p-6 text-white shadow-[0_18px_42px_-34px_rgba(0,0,0,0.72)] dark:border-white/10">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-white/45">Market status</p>
+              <div className="flex items-center gap-2">
+                <span className="rounded-md border border-white/10 bg-white/10 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-white/60">
+                  {isMiniApp ? "Mini" : "Web"}
+                </span>
+                <button
+                  type="button"
+                  onClick={loadData}
+                  className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md border border-white/10 bg-white/10 px-2.5 text-[10px] font-black uppercase tracking-[0.12em] text-white/70 transition hover:bg-white/20"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${loadingData ? "animate-spin" : ""}`} />
+                  Sync
+                </button>
+              </div>
+            </div>
+            <div className="mt-5 grid gap-3">
+              <StatusLine icon={BadgeCheck} label="Verified claims" value={formatNumber(status.global.claims)} />
+              <StatusLine icon={Wallet} label="Wallets paid" value={formatNumber(status.global.wallets)} />
+              <StatusLine icon={ShieldCheck} label="X accounts" value={formatNumber(status.global.xAccounts)} />
+              <StatusLine icon={CircleDollarSign} label="CRC loop" value="funded + paid" />
+            </div>
+            <div className="mt-5 grid gap-2 text-xs font-bold text-white/58">
+              <p className="flex items-center justify-between gap-3">
+                <span>X OAuth</span>
+                <span className={status.xOAuthConfigured ? "text-emerald-300" : "text-citrus"}>
+                  {status.xOAuthConfigured ? "ready" : "missing"}
+                </span>
+              </p>
+              <p className="flex items-center justify-between gap-3">
+                <span>X verification API</span>
+                <span className={status.xApiConfigured ? "text-emerald-300" : "text-citrus"}>
+                  {status.xApiConfigured ? "ready" : "missing"}
+                </span>
+              </p>
+              <p className="flex items-center justify-between gap-3">
+                <span>Settlement</span>
+                <span className="text-emerald-300">
+                  {formatDurationShort(status.settings.payoutDelaySeconds)}
+                </span>
+              </p>
+            </div>
+          </div>
+        </aside>
+      </div>
+          )}
+
+          {garageSection === "leaderboard" && (
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+              <GarageLeaderboard entries={status.leaderboard} profiles={leaderboardProfiles} />
+              <div className="rounded-lg border border-[#39363a] bg-[#242329] p-6 text-white shadow-[0_18px_42px_-34px_rgba(0,0,0,0.72)] dark:border-white/10">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-white/45">
+                  CRC earners
+                </p>
+                <h2 className="mt-1 font-display text-xl font-black">Participation rank</h2>
+                <p className="mt-3 text-sm font-bold leading-6 text-white/58">
+                  Wallets rank by verified missions and CRC earned. Circles profiles show the name and image behind the wallet.
+                </p>
+                <div className="mt-5 grid gap-3">
+                  <StatusLine icon={Trophy} label="Ranked wallets" value={formatNumber(status.leaderboard.length)} />
+                  <StatusLine icon={CircleDollarSign} label="CRC paid" value={`${formatNumber(status.global.crcPaid)} CRC`} />
+                  <StatusLine icon={Activity} label="X reads" value={formatNumber(status.global.xReads)} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {garageSection === "profile" && (
+            <div className="grid gap-6 lg:grid-cols-[380px_minmax(0,1fr)]">
+          <div className="rounded-lg border border-ink/10 bg-[#fbfaf6] p-6 shadow-sm dark:border-white/10 dark:bg-white/5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45 dark:text-white/45">
+                  Invite
+                </p>
+                <h2 className="font-display text-xl font-black">Referral link</h2>
+              </div>
+              <button
+                type="button"
+                onClick={copyInviteLink}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-ink px-3 text-sm font-black text-white dark:bg-white dark:text-ink"
+              >
+                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {copied ? "Copied" : "Copy"}
+              </button>
+            </div>
+            <code className="mt-5 block truncate rounded-md bg-[#f0ede5] px-3 py-2.5 text-xs font-bold text-ink/65 dark:bg-black/20 dark:text-white/70">
+              {inviteLink}
+            </code>
+            <p className="mt-3 text-sm font-bold leading-6 text-ink/55 dark:text-white/58">
+              Share this Circles-name link. When a new wallet connects from it and completes verified boost missions, you unlock referral CRC for that invited user.
+            </p>
+            <div className="mt-5 grid grid-cols-3 gap-3">
+              <MiniStat label="Invited" value={formatNumber(referrals.mine.total)} />
+              <MiniStat label="Activated" value={formatNumber(referrals.rewards.activatedWallets)} />
+              <MiniStat label="Bonus" value={`${formatNumber(referrals.rewards.crcEarned)} CRC`} />
+            </div>
+            <div className="mt-5 rounded-lg border border-ink/10 bg-[#f0ede5] p-4 dark:border-white/10 dark:bg-white/5">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-ink/45 dark:text-white/45">
+                    Referral rewards
+                  </p>
+                  <h3 className="font-display text-lg font-black">Per invited wallet</h3>
+                </div>
+                <span className="w-fit rounded-md bg-citrus/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-citrus">
+                  rewards stack
+                </span>
+              </div>
+              <div className="mt-4 grid gap-3">
+                {referrals.milestones.map((milestone) => (
+                  <div
+                    key={milestone.threshold}
+                    className="grid gap-3 rounded-md border border-ink/10 bg-[#fbfaf6] p-3 dark:border-white/10 dark:bg-black/20 sm:grid-cols-[minmax(0,1fr)_auto]"
+                  >
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-ink/42 dark:text-white/42">
+                        Invited wallet completes
+                      </p>
+                      <p className="mt-1 font-display text-lg font-black">
+                        {formatNumber(milestone.threshold)} verified{" "}
+                        {milestone.threshold === 1 ? "mission" : "missions"}
+                      </p>
+                    </div>
+                    <div className="sm:text-right">
+                      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-ink/42 dark:text-white/42">
+                        You receive
+                      </p>
+                      <p className="mt-1 font-display text-lg font-black text-citrus">
+                        +{formatNumber(milestone.amountCrc)} CRC
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-3 text-xs font-bold leading-5 text-ink/50 dark:text-white/50">
+                If the same invited wallet reaches 5 verified missions, the 1, 3, and 5 mission bonuses all unlock.
+              </p>
+            </div>
+            {referrals.rewards.pendingCrc > 0 && (
+              <p className="mt-3 text-xs font-bold text-ink/50 dark:text-white/50">
+                {formatNumber(referrals.rewards.pendingCrc)} CRC referral bonus pending.
+              </p>
+            )}
+          </div>
+
+          <div className="rounded-lg border border-ink/10 bg-[#fbfaf6] p-6 shadow-sm dark:border-white/10 dark:bg-white/5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45 dark:text-white/45">
+                  My activity
+                </p>
+                <h2 className="mt-1 font-display text-xl font-black">Personal dashboard</h2>
+              </div>
+              {status.linkedAccount && (
+                <span className="rounded-md bg-citrus/10 px-3 py-1 text-xs font-black text-citrus">
+                  @{status.linkedAccount.username}
+                </span>
+              )}
+            </div>
+
+            {isAuthenticated ? (
+              <>
+                <div className="mt-5 flex items-center gap-3 rounded-lg border border-ink/10 bg-[#f0ede5] p-3 dark:border-white/10 dark:bg-white/5">
+                  {circlesAvatarUrl ? (
+                    <img
+                      src={circlesAvatarUrl}
+                      alt={circlesDisplayName}
+                      className="h-12 w-12 shrink-0 rounded-full border border-ink/10 object-cover dark:border-white/10"
+                    />
+                  ) : (
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-ink/10 bg-[#fbfaf6] text-sm font-black text-ink/45 dark:border-white/10 dark:bg-white/10 dark:text-white/45">
+                      {circlesDisplayName.slice(0, 1).toUpperCase()}
+                    </span>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-black uppercase tracking-[0.14em] text-ink/42 dark:text-white/42">
+                      Circles profile
+                    </p>
+                    <p className="truncate font-display text-lg font-black leading-tight">{circlesDisplayName}</p>
+                    <p className="mt-0.5 truncate text-xs font-bold text-ink/45 dark:text-white/45">
+                      {shortAddress(profileAddress)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-5 grid grid-cols-2 gap-3">
+                  <MiniStat label="Actions" value={formatNumber(status.personal.verifiedActions)} />
+                  <MiniStat label="Earned" value={`${formatNumber(status.personal.crcEarned)} CRC`} />
+                  <MiniStat label="Pending" value={`${formatNumber(status.personal.crcPending)} CRC`} />
+                  <MiniStat label="X reads" value={formatNumber(status.personal.xReads)} />
+                </div>
+
+                <div className="mt-5 space-y-3">
+                  {status.recentClaims.length ? (
+                    status.recentClaims.map((claim) => (
+                      <div key={claim.id} className="rounded-md border border-ink/10 bg-[#f0ede5] p-3 text-sm dark:border-white/10 dark:bg-white/5">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate font-black">{claim.campaignTitle}</p>
+                            <p className="text-xs font-bold text-ink/45 dark:text-white/45">
+                              {ACTION_LABELS[claim.action as GarageXCampaign["action"]] ?? claim.action} - {formatNumber(claim.campaignRewardCrc)} CRC - {formatDate(claim.createdAt)}
+                            </p>
+                          </div>
+                          <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${claimTone(claim.status)}`}>
+                            {claimStatusLabel(claim.status)}
+                          </span>
+                        </div>
+                        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-bold text-ink/45 dark:text-white/45">
+                          <span>{evidenceLabel(claim.verificationEvidence)}</span>
+                          <span>{formatNumber(claim.verificationChecked)} reads</span>
+                          {claim.payoutAvailableAt && claim.status === "verified_pending" && (
+                            <span>re-check {formatDateTime(claim.payoutAvailableAt)}</span>
+                          )}
+                          {claim.campaignTweetUrl && (
+                            <a
+                              href={claim.campaignTweetUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-black text-marine hover:underline"
+                            >
+                              X post
+                            </a>
+                          )}
+                          {claim.payoutTxHash && (
+                            <a
+                              href={`https://gnosisscan.io/tx/${claim.payoutTxHash}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-black text-marine hover:underline"
+                            >
+                              {shortHash(claim.payoutTxHash)}
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-md border border-ink/10 bg-[#f0ede5] p-4 dark:border-white/10 dark:bg-white/5">
+                      <p className="font-display text-lg font-black">No missions completed yet.</p>
+                      <p className="mt-1 text-sm font-bold leading-6 text-ink/52 dark:text-white/55">
+                        Complete a live boost to build your activity history and appear on the leaderboard.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setGarageSection("boosts")}
+                        className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-ink px-4 text-sm font-black text-white transition hover:bg-ink/90 dark:bg-white dark:text-ink"
+                      >
+                        <Target className="h-4 w-4" />
+                        Open boosts
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={openLogin}
+                className="mt-4 w-full rounded-lg bg-ink px-4 py-3 text-sm font-black text-white transition hover:bg-ink/90 dark:bg-white dark:text-ink"
+              >
+                Connect wallet to track activity
+              </button>
+            )}
+          </div>
+            </div>
+          )}
+
+          {garageSection === "creator" && (
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+          <CreatorDashboard
+            campaigns={creatorCampaigns}
+            isAuthenticated={isAuthenticated}
+            isMiniApp={isMiniApp}
+            onConnect={openLogin}
+            onPay={(payment) => void payCampaignFunding(payment)}
+            onScan={(payment) => void scanCampaignFunding(payment)}
+            onCancel={(payment) => void cancelCampaignFunding(payment)}
+            onCreateFocus={() => document.getElementById("garage-boost-title")?.focus()}
+            fundingAction={fundingAction}
+            fundingFeedback={fundingFeedback}
+            fundingSentTxs={fundingSentTxs}
+          />
+          <div className="space-y-6">
+          <form
+            onSubmit={createCampaign}
+            className="rounded-lg border border-ink/10 bg-[#fbfaf6] p-6 shadow-sm dark:border-white/10 dark:bg-white/5"
+          >
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45 dark:text-white/45">
+              Creator market
+            </p>
+            <h2 className="mt-1 font-display text-xl font-black">Launch boost</h2>
+            <div className="mt-4 rounded-lg border border-citrus/20 bg-citrus/10 p-4 dark:border-citrus/25 dark:bg-citrus/10">
+              <div className="flex items-start gap-3">
+                <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-citrus text-white">
+                  <CircleDollarSign className="h-4 w-4" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-citrus">
+                    Creator-funded CRC rewards
+                  </p>
+                  <p className="mt-1 text-sm font-bold leading-6 text-ink/62 dark:text-white/68">
+                    You fund the user reward pool plus a{" "}
+                    {formatPercentFromBps(status.settings.campaignFeeBps)} NF Society fee. The boost goes live only after the CRC payment is detected.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="mt-5 grid gap-4">
+              <input
+                id="garage-boost-title"
+                value={createForm.title}
+                onChange={(event) => setCreateForm((prev) => ({ ...prev, title: event.target.value }))}
+                placeholder="Title"
+                className="h-14 rounded-lg border border-ink/10 bg-sand/50 px-4 text-sm font-bold leading-none outline-none placeholder:text-ink/42 focus:border-marine dark:border-white/10 dark:bg-black/20 dark:placeholder:text-white/42"
+              />
+              <input
+                value={createForm.tweetUrl}
+                onChange={(event) => setCreateForm((prev) => ({ ...prev, tweetUrl: event.target.value }))}
+                placeholder="X post URL"
+                className="h-14 rounded-lg border border-ink/10 bg-sand/50 px-4 text-sm font-bold leading-none outline-none placeholder:text-ink/42 focus:border-marine dark:border-white/10 dark:bg-black/20 dark:placeholder:text-white/42"
+              />
+              {createForm.tweetUrl && (
+                <div
+                  className={`flex items-center gap-2 rounded-md border px-3 py-2 text-xs font-bold ${
+                    createTweet
+                      ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200"
+                      : "border-red-500/20 bg-red-500/10 text-red-800 dark:text-red-200"
+                  }`}
+                >
+                  {createTweet ? <Check className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
+                  <span>
+                    {createTweet
+                      ? `X post detected${createTweet.username ? ` from @${createTweet.username}` : ""}.`
+                      : "Use an X post URL like https://x.com/name/status/123."}
+                  </span>
+                </div>
+              )}
+              <select
+                value={createForm.action}
+                onChange={(event) =>
+                  setCreateForm((prev) => ({
+                    ...prev,
+                    action: event.target.value as GarageXCampaign["action"],
+                  }))
+                }
+                className="h-14 rounded-lg border border-ink/10 bg-sand/50 px-4 text-sm font-bold leading-none outline-none focus:border-marine dark:border-white/10 dark:bg-black/20"
+              >
+                <option value="repost">Repost</option>
+                <option value="like">Like</option>
+                <option value="quote">Quote</option>
+              </select>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="flex min-h-[118px] flex-col justify-between rounded-lg border border-ink/10 bg-sand/50 p-4 transition focus-within:border-marine dark:border-white/10 dark:bg-black/20">
+                  <span className="text-[10px] font-black uppercase tracking-[0.14em] text-ink/45 dark:text-white/45">
+                    CRC / action
+                  </span>
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3">
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      inputMode="decimal"
+                      value={createForm.rewardCrc}
+                      onChange={(event) => setCreateForm((prev) => ({ ...prev, rewardCrc: event.target.value }))}
+                      aria-label="CRC reward per verified action"
+                      className="h-9 min-w-0 bg-transparent font-display text-3xl font-black leading-none text-ink outline-none dark:text-white"
+                    />
+                    <span className="pb-1 text-xs font-black uppercase tracking-[0.12em] text-citrus">CRC</span>
+                  </div>
+                  <span className="text-[11px] font-bold leading-4 text-ink/45 dark:text-white/45">
+                    Paid to each verified user.
+                  </span>
+                </label>
+                <label className="flex min-h-[118px] flex-col justify-between rounded-lg border border-ink/10 bg-sand/50 p-4 transition focus-within:border-marine dark:border-white/10 dark:bg-black/20">
+                  <span className="text-[10px] font-black uppercase tracking-[0.14em] text-ink/45 dark:text-white/45">
+                    Max payouts
+                  </span>
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3">
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      inputMode="numeric"
+                      value={createForm.maxClaims}
+                      onChange={(event) => setCreateForm((prev) => ({ ...prev, maxClaims: event.target.value }))}
+                      aria-label="Maximum number of campaign payouts"
+                      className="h-9 min-w-0 bg-transparent font-display text-3xl font-black leading-none text-ink outline-none dark:text-white"
+                    />
+                    <span className="pb-1 text-xs font-black uppercase tracking-[0.12em] text-ink/45 dark:text-white/45">
+                      users
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-bold leading-4 text-ink/45 dark:text-white/45">
+                    Campaign stops after this many claims.
+                  </span>
+                </label>
+              </div>
+              <div className="grid gap-3 rounded-lg border border-ink/10 bg-[#f0ede5] p-3 dark:border-white/10 dark:bg-white/5 sm:grid-cols-3">
+                <MiniStat label="Reward pool" value={`${formatNumber(createCost.rewardPoolCrc)} CRC`} />
+                <MiniStat
+                  label="NF Society fee"
+                  value={`${formatNumber(createCost.platformFeeCrc)} CRC (${formatPercentFromBps(status.settings.campaignFeeBps)})`}
+                />
+                <MiniStat label="Total" value={`${formatNumber(createCost.totalCrc)} CRC`} />
+              </div>
+              <CreatorCampaignPreview
+                title={createTitle}
+                action={createForm.action}
+                tweet={createTweet}
+                rewardCrc={createRewardCrc}
+                maxClaims={createMaxClaims}
+                totalCrc={createCost.totalCrc}
+                settlementSeconds={status.settings.payoutDelaySeconds}
+                ready={createReady}
+              />
+              {isAuthenticated ? (
+                <button
+                  type="submit"
+                  disabled={creating || !createReady}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-marine px-4 text-sm font-black text-white transition hover:opacity-90 disabled:opacity-60"
+                >
+                  {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                  {creating ? "Creating draft" : createIssue ?? "Create payment draft"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={openLogin}
+                  className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-ink px-4 text-sm font-black text-white transition hover:bg-ink/90 dark:bg-white dark:text-ink"
+                >
+                  <Wallet className="h-4 w-4" />
+                  Connect to launch
+                </button>
+              )}
+            </div>
+          </form>
+
+          {fundingPayment && (
+            <div className="rounded-lg border border-marine/20 bg-marine/10 p-6 shadow-sm dark:border-sky-300/20 dark:bg-sky-300/10">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-marine dark:text-sky-300">
+                    Payment required
+                  </p>
+                  <h2 className="mt-1 font-display text-xl font-black">
+                    Pay {formatNumber(fundingPayment.amountCrc)} CRC to activate
+                  </h2>
+                </div>
+                <span className="w-fit rounded-md bg-marine/10 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-marine dark:bg-sky-300/10 dark:text-sky-300">
+                  Pending payment
+                </span>
+              </div>
+              <FundingBreakdown payment={fundingPayment} className="mt-4" />
+              <PaymentQrCode
+                paymentLink={fundingPayment.paymentLink}
+                paymentData={fundingPayment.gameData}
+                qrCode={fundingPayment.qrCode}
+                isMiniApp={isMiniApp}
+                className="mt-4"
+              />
+              <div className="mt-4 grid gap-2 sm:grid-cols-2 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(120px,0.8fr)]">
+                <button
+                  type="button"
+                  onClick={() => void payCampaignFunding()}
+                  disabled={fundingAction === "pay" || primaryFundingSent}
+                  aria-label={`Open payment for ${formatNumber(fundingPayment.amountCrc)} CRC`}
+                  className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-lg bg-marine px-4 text-sm font-black text-white transition hover:opacity-90 disabled:opacity-60"
+                >
+                  {fundingAction === "pay" ? (
+                    <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                  ) : primaryFundingSent ? (
+                    <Check className="h-4 w-4 shrink-0" />
+                  ) : (
+                    <CircleDollarSign className="h-4 w-4 shrink-0" />
+                  )}
+                  <span className="truncate">{primaryFundingSent ? "Payment sent" : isMiniApp ? "Pay with passkey" : "Open payment"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void scanCampaignFunding()}
+                  disabled={fundingAction === "scan"}
+                  className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-lg border border-ink/10 bg-[#fbfaf6] px-4 text-sm font-black text-ink transition hover:bg-white disabled:opacity-60 dark:border-white/10 dark:bg-white/10 dark:text-white"
+                >
+                  {fundingAction === "scan" ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : <RefreshCw className="h-4 w-4 shrink-0" />}
+                  <span className="truncate">Check payment</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void cancelCampaignFunding()}
+                  disabled={fundingAction === "cancel" || primaryFundingSent}
+                  className="inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-4 text-sm font-black text-red-700 transition hover:bg-red-500/15 disabled:opacity-60 sm:col-span-2 2xl:col-span-1 dark:text-red-200"
+                >
+                  {fundingAction === "cancel" ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : <Trash2 className="h-4 w-4 shrink-0" />}
+                  <span className="truncate">Cancel draft</span>
+                </button>
+              </div>
+              <FundingFeedbackNotice
+                feedback={fundingFeedback?.campaignId === fundingPayment.campaignId ? fundingFeedback : null}
+              />
+            </div>
+          )}
+          </div>
+            </div>
+          )}
+      </section>
+    </main>
+  );
+}
+
+function FundingBreakdown({
+  payment,
+  className = "",
+}: {
+  payment: GarageCampaignFundingPayment;
+  className?: string;
+}) {
+  return (
+    <div className={`grid gap-2 sm:grid-cols-3 ${className}`}>
+      <MiniStat label="Reward pool" value={`${formatNumber(payment.rewardPoolCrc)} CRC`} />
+      <MiniStat
+        label="NF Society fee"
+        value={`${formatNumber(payment.platformFeeCrc)} CRC (${formatPercentFromBps(payment.feeBps)})`}
+      />
+      <MiniStat label="Total due" value={`${formatNumber(payment.amountCrc)} CRC`} />
+    </div>
+  );
+}
+
+function FundingFeedbackNotice({ feedback }: { feedback: FundingFeedback | null }) {
+  if (!feedback) return null;
+
+  return (
+    <div
+      className={`mt-3 flex items-center gap-2 rounded-lg border px-4 py-3 text-sm font-bold ${
+        feedback.tone === "success"
+          ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200"
+          : "border-red-500/20 bg-red-500/10 text-red-800 dark:text-red-200"
+      }`}
+    >
+      {feedback.tone === "success" ? (
+        <Check className="h-4 w-4 shrink-0" />
+      ) : (
+        <AlertTriangle className="h-4 w-4 shrink-0" />
+      )}
+      <span className="min-w-0">
+        {feedback.message}
+        {feedback.txHash && (
+          <a
+            href={`https://gnosisscan.io/tx/${feedback.txHash}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ml-2 inline-flex items-center gap-1 font-black underline underline-offset-2"
+          >
+            View tx
+            <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+        )}
+      </span>
+    </div>
+  );
+}
+
+function PaymentQrCode({
+  paymentLink,
+  paymentData,
+  qrCode,
+  isMiniApp = false,
+  compact = false,
+  className = "",
+}: {
+  paymentLink: string;
+  paymentData?: string;
+  qrCode?: string | null;
+  isMiniApp?: boolean;
+  compact?: boolean;
+  className?: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  async function copyPaymentLink() {
+    try {
+      await navigator.clipboard.writeText(paymentLink);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1400);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  return (
+    <div
+      className={`grid gap-4 rounded-lg border border-ink/10 bg-[#fbfaf6] p-4 dark:border-white/10 dark:bg-white/10 ${
+        compact ? "sm:grid-cols-[112px_minmax(0,1fr)]" : "sm:grid-cols-[144px_minmax(0,1fr)]"
+      } ${className}`}
+    >
+      <div
+        className={`flex items-center justify-center rounded-lg border border-ink/10 bg-white p-2 shadow-sm dark:border-white/10 ${
+          compact ? "h-28 w-28" : "h-36 w-36"
+        }`}
+      >
+        {isMiniApp ? (
+          <div className="flex h-full w-full flex-col items-center justify-center gap-2 rounded-md bg-[#f0ede5] text-center text-marine dark:bg-white/10 dark:text-sky-300">
+            <ExternalLink className={compact ? "h-8 w-8" : "h-10 w-10"} />
+            <span className="text-[10px] font-black uppercase tracking-[0.12em]">
+              Fallback link
+            </span>
+          </div>
+        ) : qrCode ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={qrCode} alt="CRC payment QR code" className="h-full w-full rounded-md" />
+        ) : (
+          <span className="text-center text-[10px] font-black uppercase tracking-[0.12em] text-red-500">
+            QR unavailable
+          </span>
+        )}
+      </div>
+      <div className="flex min-w-0 flex-col justify-center gap-3">
+        <div>
+          <p className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-marine dark:text-sky-300">
+            {isMiniApp ? <ExternalLink className="h-3.5 w-3.5" /> : <QrCode className="h-3.5 w-3.5" />}
+            {isMiniApp ? "Fallback link" : "Payment QR"}
+          </p>
+          <p className="mt-1 text-sm font-bold text-ink/60 dark:text-white/60">
+            {isMiniApp
+              ? "Pay directly with the Circles passkey. The checkout link stays here as a fallback."
+              : "Scan with Circles on mobile, or copy the payment link."}
+          </p>
+        </div>
+        <div className="grid gap-1">
+          <span className="text-[10px] font-black uppercase tracking-[0.14em] text-ink/42 dark:text-white/42">
+            Payment data
+          </span>
+          <code className="block truncate rounded-md border border-ink/10 bg-[#f0ede5] px-3 py-2 text-[11px] font-bold text-ink/55 dark:border-white/10 dark:bg-white/10 dark:text-white/55">
+            {paymentData || paymentLink}
+          </code>
+        </div>
+        <button
+          type="button"
+          onClick={copyPaymentLink}
+          className="inline-flex h-9 w-fit items-center justify-center gap-2 rounded-md border border-ink/10 bg-white px-3 text-xs font-black text-ink transition hover:bg-[#f0ede5] dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/15"
+        >
+          {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+          {copied ? "Copied" : isMiniApp ? "Copy fallback link" : "Copy payment link"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CreatorCampaignPreview({
+  title,
+  action,
+  tweet,
+  rewardCrc,
+  maxClaims,
+  totalCrc,
+  settlementSeconds,
+  ready,
+}: {
+  title: string;
+  action: GarageXCampaign["action"];
+  tweet: ReturnType<typeof parseXPostInput>;
+  rewardCrc: number;
+  maxClaims: number;
+  totalCrc: number;
+  settlementSeconds: number;
+  ready: boolean;
+}) {
+  const safeReward = Number.isFinite(rewardCrc) && rewardCrc > 0 ? rewardCrc : 0;
+  const safeClaims = Number.isFinite(maxClaims) && maxClaims > 0 ? maxClaims : 0;
+
+  return (
+    <div className="rounded-lg border border-ink/10 bg-[#fffdf8] p-4 dark:border-white/10 dark:bg-white/[0.03]">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45 dark:text-white/45">
+          Campaign preview
+        </p>
+        <span
+          className={`rounded-md px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${
+            ready
+              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+              : "bg-citrus/10 text-citrus"
+          }`}
+        >
+          {ready ? "Ready draft" : "Needs details"}
+        </span>
+      </div>
+
+      <div className="mt-4 rounded-lg border border-ink/10 bg-[#f0ede5] p-4 dark:border-white/10 dark:bg-white/5">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-md bg-ink/8 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-ink/75 dark:bg-white/10 dark:text-white/80">
+            <Repeat2 className="h-3.5 w-3.5" />
+            {ACTION_LABELS[action]}
+          </span>
+          <span className="rounded-md bg-emerald-500/10 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-emerald-700 dark:text-emerald-300">
+            {formatNumber(safeReward)} CRC
+          </span>
+          <span className="rounded-md bg-marine/10 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-marine dark:text-sky-300">
+            {formatDurationShort(settlementSeconds)} settlement
+          </span>
+          <span className="rounded-md bg-ink/5 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-ink/50 dark:bg-white/10 dark:text-white/55">
+            {formatNumber(safeClaims)} slots
+          </span>
+        </div>
+        <h3 className="mt-4 font-display text-2xl font-black tracking-tight">
+          {title || "Campaign title"}
+        </h3>
+        <p className="mt-2 text-sm font-semibold leading-6 text-ink/58 dark:text-white/62">
+          {tweet
+            ? `Target post ${tweet.username ? `@${tweet.username}` : tweet.id}`
+            : "Waiting for a valid X post."}
+        </p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <MiniStat label="Reward" value={`${formatNumber(safeReward)} CRC`} />
+          <MiniStat label="Payouts" value={formatNumber(safeClaims)} />
+          <MiniStat label="Fund total" value={`${formatNumber(totalCrc)} CRC`} />
+        </div>
+        {tweet && (
+          <a
+            href={tweet.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-4 inline-flex items-center gap-2 text-xs font-black text-marine hover:underline"
+          >
+            Open detected X post
+            <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function campaignFillPercent(campaign: GarageXCampaign) {
+  if (campaign.maxClaims <= 0) return 0;
+  return Math.min(100, Math.round((campaign.stats.claims / campaign.maxClaims) * 100));
+}
+
+function campaignRemainingCrc(campaign: GarageXCampaign) {
+  return Math.max(0, roundCrc(campaign.budgetCrc - campaign.stats.spentCrc));
+}
+
+function creatorCampaignStatus(campaign: GarageXCampaign) {
+  if (campaign.status === "pending_payment") return "Pending payment";
+  if (campaign.status === "active" && campaign.stats.remainingClaims <= 0) return "Spent";
+  if (campaign.status === "active") return "Live";
+  if (campaign.status === "cancelled") return "Cancelled";
+  return campaign.status.replace(/_/g, " ");
+}
+
+function creatorCampaignTone(campaign: GarageXCampaign) {
+  if (campaign.status === "pending_payment") return "bg-marine/10 text-marine dark:text-sky-300";
+  if (campaign.status === "active" && campaign.stats.remainingClaims <= 0) return "bg-ink/8 text-ink/55 dark:bg-white/10 dark:text-white/60";
+  if (campaign.status === "active") return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
+  if (campaign.status === "cancelled") return "bg-red-500/10 text-red-700 dark:text-red-200";
+  return "bg-citrus/10 text-citrus";
+}
+
+function CreatorDashboard({
+  campaigns,
+  isAuthenticated,
+  isMiniApp,
+  onConnect,
+  onPay,
+  onScan,
+  onCancel,
+  onCreateFocus,
+  fundingAction,
+  fundingFeedback,
+  fundingSentTxs,
+}: {
+  campaigns: GarageXCampaign[];
+  isAuthenticated: boolean;
+  isMiniApp: boolean;
+  onConnect: () => void;
+  onPay: (payment: GarageCampaignFundingPayment) => void;
+  onScan: (payment: GarageCampaignFundingPayment) => void;
+  onCancel: (payment: GarageCampaignFundingPayment) => void;
+  onCreateFocus: () => void;
+  fundingAction: "pay" | "scan" | "cancel" | null;
+  fundingFeedback: FundingFeedback | null;
+  fundingSentTxs: FundingSentState;
+}) {
+  const stats = campaigns.reduce(
+    (acc, campaign) => {
+      if (campaign.status === "active") {
+        acc.rewardPool += campaign.budgetCrc;
+        acc.fees += campaign.platformFeeCrc;
+        acc.paid += campaign.stats.spentCrc;
+        acc.remaining += campaignRemainingCrc(campaign);
+        if (campaign.stats.remainingClaims > 0) acc.live += 1;
+        else acc.spent += 1;
+      }
+      if (campaign.status === "pending_payment") acc.pending += 1;
+      if (campaign.status === "cancelled") acc.cancelled += 1;
+      return acc;
+    },
+    { rewardPool: 0, fees: 0, paid: 0, remaining: 0, live: 0, pending: 0, spent: 0, cancelled: 0 },
+  );
+  const campaignGroups = [
+    {
+      key: "pending",
+      title: "Pending payment",
+      description: "Drafts waiting for CRC funding.",
+      items: campaigns.filter((campaign) => campaign.status === "pending_payment"),
+    },
+    {
+      key: "live",
+      title: "Live",
+      description: "Funded boosts users can claim now.",
+      items: campaigns.filter((campaign) => campaign.status === "active" && campaign.stats.remainingClaims > 0),
+    },
+    {
+      key: "spent",
+      title: "Spent",
+      description: "Funded boosts with no payouts left.",
+      items: campaigns.filter((campaign) => campaign.status === "active" && campaign.stats.remainingClaims <= 0),
+    },
+    {
+      key: "cancelled",
+      title: "Cancelled",
+      description: "Drafts cancelled before payment.",
+      items: campaigns.filter((campaign) => campaign.status === "cancelled"),
+    },
+  ].filter((group) => group.items.length > 0);
+
+  return (
+    <section className="rounded-lg border border-ink/10 bg-[#fbfaf6] p-6 shadow-sm dark:border-white/10 dark:bg-white/5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45 dark:text-white/45">
+            Creator dashboard
+          </p>
+          <h2 className="mt-1 font-display text-xl font-black">My boosts</h2>
+        </div>
+        <span className="inline-flex w-fit items-center gap-2 rounded-md bg-citrus/10 px-3 py-1.5 text-xs font-black uppercase tracking-[0.12em] text-citrus">
+          <CircleDollarSign className="h-3.5 w-3.5" />
+          NF Society fee
+        </span>
+      </div>
+
+      {!isAuthenticated ? (
+        <button
+          type="button"
+          onClick={onConnect}
+          className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-ink px-4 text-sm font-black text-white transition hover:bg-ink/90 dark:bg-white dark:text-ink"
+        >
+          <Wallet className="h-4 w-4" />
+          Connect wallet to view boosts
+        </button>
+      ) : (
+        <>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <MiniStat label="Live" value={formatNumber(stats.live)} />
+            <MiniStat label="Pending" value={formatNumber(stats.pending)} />
+            <MiniStat label="Spent" value={formatNumber(stats.spent)} />
+            <MiniStat label="Cancelled" value={formatNumber(stats.cancelled)} />
+          </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <MiniStat label="Pool funded" value={`${formatNumber(stats.rewardPool)} CRC`} />
+            <MiniStat label="NF fees" value={`${formatNumber(stats.fees)} CRC`} />
+            <MiniStat label="Paid to users" value={`${formatNumber(stats.paid)} CRC`} />
+            <MiniStat label="Unspent rewards" value={`${formatNumber(stats.remaining)} CRC`} />
+          </div>
+
+          <div className="mt-6 space-y-6">
+            {campaignGroups.length ? (
+              campaignGroups.map((group) => (
+                <div
+                  key={group.key}
+                  className="border-t border-ink/10 pt-4 first:border-t-0 first:pt-0 dark:border-white/10"
+                >
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-ink/45 dark:text-white/45">
+                        {group.title}
+                      </p>
+                      <p className="text-xs font-bold text-ink/45 dark:text-white/45">
+                        {group.description}
+                      </p>
+                    </div>
+                    <span className="w-fit rounded-md bg-ink/5 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-ink/50 dark:bg-white/10 dark:text-white/55">
+                      {formatNumber(group.items.length)}
+                    </span>
+                  </div>
+                  <div className="mt-3 space-y-3">
+                    {group.items.map((campaign) => {
+                const fill = campaignFillPercent(campaign);
+                const funding = campaign.fundingPayment ?? null;
+                const paymentSent = funding ? hasFundingSent(fundingSentTxs, funding.campaignId) : false;
+                return (
+                  <div
+                    key={campaign.id}
+                    className="rounded-lg border border-ink/10 bg-[#f0ede5] p-4 dark:border-white/10 dark:bg-white/5"
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`rounded-md px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${creatorCampaignTone(campaign)}`}>
+                            {creatorCampaignStatus(campaign)}
+                          </span>
+                          <span className="rounded-md bg-ink/5 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-ink/50 dark:bg-white/10 dark:text-white/55">
+                            {ACTION_LABELS[campaign.action]}
+                          </span>
+                        </div>
+                        <h3 className="mt-3 truncate font-display text-xl font-black">{campaign.title}</h3>
+                        <p className="mt-1 text-xs font-bold text-ink/45 dark:text-white/45">
+                          {formatNumber(campaign.rewardCrc)} CRC/action - {formatNumber(campaign.stats.claims)} of{" "}
+                          {formatNumber(campaign.maxClaims)} claims
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 flex-wrap gap-2">
+                        {campaign.tweetUrl && (
+                          <a
+                            href={campaign.tweetUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-ink/10 bg-[#fbfaf6] px-3 text-xs font-black text-ink transition hover:bg-white dark:border-white/10 dark:bg-white/10 dark:text-white"
+                          >
+                            X post
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                        )}
+                        {campaign.fundingTxHash && (
+                          <a
+                            href={`https://gnosisscan.io/tx/${campaign.fundingTxHash}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-ink/10 bg-[#fbfaf6] px-3 text-xs font-black text-ink transition hover:bg-white dark:border-white/10 dark:bg-white/10 dark:text-white"
+                          >
+                            Funding tx
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid gap-3 sm:grid-cols-4">
+                      <MiniStat label="Reward pool" value={`${formatNumber(campaign.budgetCrc)} CRC`} />
+                      <MiniStat label="NF fee" value={`${formatNumber(campaign.platformFeeCrc)} CRC`} />
+                      <MiniStat label="Paid" value={`${formatNumber(campaign.stats.spentCrc)} CRC`} />
+                      <MiniStat label="Remaining" value={`${formatNumber(campaignRemainingCrc(campaign))} CRC`} />
+                    </div>
+
+                    <div className="mt-4">
+                      <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-[0.14em] text-ink/42 dark:text-white/42">
+                        <span>Fill</span>
+                        <span>{fill}%</span>
+                      </div>
+                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-ink/10 dark:bg-white/10">
+                        <div className="h-full rounded-full bg-marine transition-all" style={{ width: `${fill}%` }} />
+                      </div>
+                    </div>
+
+                    {funding && (
+                      <div className="mt-4 rounded-lg border border-marine/20 bg-marine/10 p-4 dark:border-sky-300/20 dark:bg-sky-300/10">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-marine dark:text-sky-300">
+                              Payment required
+                            </p>
+                            <h4 className="mt-1 font-display text-lg font-black">
+                              Pay {formatNumber(funding.amountCrc)} CRC to activate
+                            </h4>
+                          </div>
+                          <span className="w-fit rounded-md bg-marine/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-marine dark:bg-sky-300/10 dark:text-sky-300">
+                            Pending
+                          </span>
+                        </div>
+                        <FundingBreakdown payment={funding} className="mt-3" />
+                        <PaymentQrCode
+                          paymentLink={funding.paymentLink}
+                          paymentData={funding.gameData}
+                          qrCode={funding.qrCode}
+                          isMiniApp={isMiniApp}
+                          compact
+                          className="mt-3"
+                        />
+                        <div className="mt-3 grid gap-2 sm:grid-cols-2 2xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(120px,0.8fr)]">
+                          <button
+                            type="button"
+                            onClick={() => onPay(funding)}
+                            disabled={fundingAction === "pay" || paymentSent}
+                            aria-label={`Open payment for ${formatNumber(funding.amountCrc)} CRC`}
+                            className="inline-flex h-10 min-w-0 items-center justify-center gap-2 rounded-md bg-marine px-3 text-xs font-black text-white transition hover:opacity-90 disabled:opacity-60"
+                          >
+                            {fundingAction === "pay" ? (
+                              <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                            ) : paymentSent ? (
+                              <Check className="h-3.5 w-3.5 shrink-0" />
+                            ) : (
+                              <CircleDollarSign className="h-3.5 w-3.5 shrink-0" />
+                            )}
+                            <span className="truncate">{paymentSent ? "Payment sent" : isMiniApp ? "Pay with passkey" : "Open payment"}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onScan(funding)}
+                            disabled={fundingAction === "scan"}
+                            className="inline-flex h-10 min-w-0 items-center justify-center gap-2 rounded-md border border-ink/10 bg-[#fbfaf6] px-3 text-xs font-black text-ink transition hover:bg-white disabled:opacity-60 dark:border-white/10 dark:bg-white/10 dark:text-white"
+                          >
+                            {fundingAction === "scan" ? <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 shrink-0" />}
+                            <span className="truncate">Check payment</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onCancel(funding)}
+                            disabled={fundingAction === "cancel" || paymentSent}
+                            className="inline-flex h-10 min-w-0 items-center justify-center gap-2 rounded-md border border-red-500/20 bg-red-500/10 px-3 text-xs font-black text-red-700 transition hover:bg-red-500/15 disabled:opacity-60 sm:col-span-2 2xl:col-span-1 dark:text-red-200"
+                          >
+                            {fundingAction === "cancel" ? <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" /> : <Trash2 className="h-3.5 w-3.5 shrink-0" />}
+                            <span className="truncate">Cancel draft</span>
+                          </button>
+                        </div>
+                        <FundingFeedbackNotice
+                          feedback={fundingFeedback?.campaignId === funding.campaignId ? fundingFeedback : null}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-md border border-ink/10 bg-[#f0ede5] p-5 dark:border-white/10 dark:bg-white/5">
+                <span className="inline-flex h-11 w-11 items-center justify-center rounded-md bg-[#fbfaf6] text-ink/45 dark:bg-white/10 dark:text-white/45">
+                  <Plus className="h-5 w-5" />
+                </span>
+                <p className="mt-3 font-display text-lg font-black">No boosts created yet.</p>
+                <p className="mt-1 text-sm font-bold leading-6 text-ink/52 dark:text-white/55">
+                  Create a draft, fund the reward pool, then activate it once the CRC payment is detected.
+                </p>
+                <button
+                  type="button"
+                  onClick={onCreateFocus}
+                  className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-ink px-4 text-sm font-black text-white transition hover:bg-ink/90 dark:bg-white dark:text-ink"
+                >
+                  <Plus className="h-4 w-4" />
+                  Create first boost
+                </button>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+function GarageLeaderboard({
+  entries,
+  profiles,
+}: {
+  entries: GarageLeaderboardEntry[];
+  profiles: Record<string, CirclesProfile>;
+}) {
+  return (
+    <div className="rounded-lg border border-ink/10 bg-[#fbfaf6] p-6 shadow-sm dark:border-white/10 dark:bg-white/5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45 dark:text-white/45">
+            Leaderboard
+          </p>
+          <h2 className="mt-1 font-display text-xl font-black">Top Circles profiles</h2>
+        </div>
+        <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-ink/10 bg-[#f0ede5] text-ink/70 dark:border-white/10 dark:bg-white/10 dark:text-white/75">
+          <Trophy className="h-5 w-5" />
+        </span>
+      </div>
+
+      <div className="mt-5 space-y-3">
+        {entries.length ? (
+          entries.map((entry, index) => {
+            const profile = profiles[entry.walletAddress.toLowerCase()];
+            const displayName = profile?.name || (entry.xUsername ? `@${entry.xUsername}` : shortAddress(entry.walletAddress));
+            const pendingText = entry.crcPending > 0 ? ` + ${formatNumber(entry.crcPending)} pending` : "";
+
+            return (
+              <div
+                key={entry.walletAddress}
+                className="grid gap-4 rounded-md border border-ink/10 bg-[#f0ede5] p-4 dark:border-white/10 dark:bg-white/5 sm:grid-cols-[minmax(0,1fr)_auto]"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-ink text-xs font-black text-white dark:bg-white dark:text-ink">
+                    {index + 1}
+                  </span>
+                  {profile?.imageUrl ? (
+                    <img
+                      src={profile.imageUrl}
+                      alt={displayName}
+                      className="h-11 w-11 shrink-0 rounded-full border border-ink/10 object-cover dark:border-white/10"
+                    />
+                  ) : (
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-ink/10 bg-[#fbfaf6] text-sm font-black text-ink/45 dark:border-white/10 dark:bg-white/10 dark:text-white/45">
+                      {displayName.slice(0, 1).toUpperCase()}
+                    </span>
+                  )}
+                  <div className="min-w-0">
+                    <p className="truncate font-display text-lg font-black leading-tight">{displayName}</p>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-bold text-ink/45 dark:text-white/45">
+                      <span>Circles {shortAddress(entry.walletAddress)}</span>
+                      {entry.xUsername && (
+                        <a
+                          href={`https://x.com/${entry.xUsername}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 font-black text-marine hover:underline"
+                        >
+                          @{entry.xUsername}
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                      {entry.lastClaimAt && <span>last {formatDateTime(entry.lastClaimAt)}</span>}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 text-center sm:min-w-[240px]">
+                  <MiniStat label="Earned" value={`${formatNumber(entry.crcEarned)} CRC${pendingText}`} />
+                  <MiniStat label="Actions" value={formatNumber(entry.actions)} />
+                  <MiniStat label="Reads" value={formatNumber(entry.xReads)} />
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="rounded-md border border-ink/10 bg-[#f0ede5] p-5 text-center dark:border-white/10 dark:bg-white/5">
+            <span className="mx-auto inline-flex h-11 w-11 items-center justify-center rounded-md bg-[#fbfaf6] text-ink/45 dark:bg-white/10 dark:text-white/45">
+              <Trophy className="h-5 w-5" />
+            </span>
+            <p className="mt-3 font-display text-lg font-black">No ranked wallets yet.</p>
+            <p className="mt-1 text-sm font-bold leading-6 text-ink/52 dark:text-white/55">
+              The leaderboard fills automatically after verified missions pay CRC on-chain.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CampaignCard({
+  campaign,
+  isMiniApp,
+  showXLink,
+  verifying,
+  disabled,
+  onVerify,
+  onOpen,
+  now,
+  settlementSeconds,
+  feedback,
+}: {
+  campaign: GarageXCampaign;
+  isMiniApp: boolean;
+  showXLink: boolean;
+  verifying: boolean;
+  disabled: boolean;
+  onVerify: () => void;
+  onOpen: () => void;
+  now: number;
+  settlementSeconds: number;
+  feedback: CampaignFeedback | null;
+}) {
+  const timeRemaining = claimTimeRemaining(campaign.claimedByMe ?? null, now);
+  const claimProgress = campaign.maxClaims > 0
+    ? Math.min(100, Math.round((campaign.stats.claims / campaign.maxClaims) * 100))
+    : 0;
+
+  return (
+    <article className="overflow-hidden rounded-lg border border-ink/10 bg-[#fbfaf6] shadow-[0_18px_48px_-38px_rgba(0,0,0,0.35)] dark:border-white/10 dark:bg-white/5">
+      <div className="border-b border-ink/10 bg-[#fffdf8] p-6 dark:border-white/10 dark:bg-white/[0.03]">
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-ink/8 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-ink/75 dark:bg-white/10 dark:text-white/80">
+              <Repeat2 className="h-3.5 w-3.5" />
+              {ACTION_LABELS[campaign.action]}
+            </span>
+            <span className="rounded-md bg-emerald-500/10 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-emerald-700 dark:text-emerald-300">
+              {formatNumber(campaign.rewardCrc)} CRC
+            </span>
+            <span className="rounded-md bg-marine/10 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-marine dark:text-sky-300">
+              {formatDurationShort(settlementSeconds)} settlement
+            </span>
+            <span className="rounded-md bg-ink/5 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-ink/50 dark:bg-white/10 dark:text-white/55">
+              {formatNumber(campaign.stats.remainingClaims)} left
+            </span>
+          </div>
+          <h2 className="mt-4 font-display text-3xl font-black tracking-tight">{campaign.title}</h2>
+          {campaign.description && (
+            <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-ink/58 dark:text-white/62">
+              {campaign.description}
+            </p>
+          )}
+        </div>
+        {campaign.claimedByMe && (
+          <span className={`shrink-0 rounded-md px-3 py-1.5 text-xs font-black uppercase ${claimTone(campaign.claimedByMe.status)}`}>
+            {claimStatusLabel(campaign.claimedByMe.status)}
+          </span>
+        )}
+        {!campaign.claimedByMe && (
+          <span className="shrink-0 rounded-md bg-citrus/10 px-3 py-1.5 text-xs font-black uppercase tracking-[0.12em] text-citrus">
+            Live boost
+          </span>
+        )}
+      </div>
+      </div>
+
+      <div className="p-6">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Metric label="Budget" value={`${formatNumber(campaign.budgetCrc)} CRC`} />
+        <Metric label="Claims" value={`${formatNumber(campaign.stats.claims)} / ${formatNumber(campaign.maxClaims)}`} />
+        <Metric label="Spent" value={`${formatNumber(campaign.stats.spentCrc)} CRC`} />
+      </div>
+      <div className="mt-4">
+        <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-[0.14em] text-ink/42 dark:text-white/42">
+          <span>Campaign fill</span>
+          <span>{claimProgress}%</span>
+        </div>
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-ink/10 dark:bg-white/10">
+          <div className="h-full rounded-full bg-marine transition-all" style={{ width: `${claimProgress}%` }} />
+        </div>
+      </div>
+
+      {campaign.claimedByMe && (
+        <div className="mt-5 grid gap-4 rounded-lg border border-ink/10 bg-[#f0ede5] p-4 text-xs font-bold text-ink/60 dark:border-white/10 dark:bg-white/5 dark:text-white/65 sm:grid-cols-3">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-ink/40 dark:text-white/40">Proof</p>
+            <p className="mt-1 font-black text-ink dark:text-white">
+              {evidenceLabel(campaign.claimedByMe.verificationEvidence)}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-ink/40 dark:text-white/40">X reads</p>
+            <p className="mt-1 font-black text-ink dark:text-white">
+              {formatNumber(campaign.claimedByMe.verificationChecked)}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-ink/40 dark:text-white/40">
+              {campaign.claimedByMe.payoutTxHash ? "Tx" : timeRemaining > 0 ? "Countdown" : "Settlement"}
+            </p>
+            {campaign.claimedByMe.payoutTxHash ? (
+              <a
+                href={`https://gnosisscan.io/tx/${campaign.claimedByMe.payoutTxHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 inline-flex items-center gap-1 font-black text-marine hover:underline"
+              >
+                {shortHash(campaign.claimedByMe.payoutTxHash)}
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            ) : timeRemaining > 0 ? (
+              <p className="mt-1 font-display text-lg font-black text-marine">
+                {formatDuration(timeRemaining)}
+              </p>
+            ) : (
+              <p className="mt-1 font-black text-ink dark:text-white">
+                {formatDateTime(campaign.claimedByMe.payoutAvailableAt) ?? "Pending"}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {campaign.claimedByMe?.payoutTxHash && (
+        <div className="mt-3 flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm font-bold text-emerald-800 dark:text-emerald-200">
+          <Check className="h-4 w-4" />
+          CRC sent on-chain. Wallet apps can take a few seconds to refresh.
+        </div>
+      )}
+
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+        {campaign.tweetUrl && (
+          <button
+            type="button"
+            onClick={onOpen}
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-ink/15 bg-[#fffdf8] px-4 py-3 text-sm font-black text-ink transition hover:bg-ink/5 dark:border-white/10 dark:bg-white/10 dark:text-white"
+          >
+            {isMiniApp ? "Show X link" : "Open on X"}
+            {isMiniApp ? <Copy className="h-4 w-4" /> : <ExternalLink className="h-4 w-4" />}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onVerify}
+          disabled={disabled}
+          className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-ink px-4 py-3 text-sm font-black text-white transition hover:bg-ink/90 disabled:cursor-not-allowed disabled:opacity-55 dark:bg-white dark:text-ink"
+        >
+          {verifying ? <Loader2 className="h-4 w-4 animate-spin" /> : <BadgeCheck className="h-4 w-4" />}
+          {timeRemaining > 0 ? `Re-check in ${formatDuration(timeRemaining)}` : campaignButtonLabel(campaign, verifying, disabled && campaign.id <= 0)}
+          {!verifying && !campaign.claimedByMe && <ArrowUpRight className="h-4 w-4" />}
+        </button>
+      </div>
+      {feedback && (
+        <div
+          className={`mt-3 flex items-start gap-2 rounded-lg border px-4 py-3 text-sm font-bold ${
+            feedback.tone === "success"
+              ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200"
+              : "border-red-500/20 bg-red-500/10 text-red-800 dark:text-red-200"
+          }`}
+        >
+          {feedback.tone === "success" ? (
+            <Check className="mt-0.5 h-4 w-4 shrink-0" />
+          ) : (
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          )}
+          <span className="min-w-0">
+            {feedback.message}
+            {feedback.txHash && (
+              <a
+                href={`https://gnosisscan.io/tx/${feedback.txHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-2 inline-flex items-center gap-1 font-black underline underline-offset-2"
+              >
+                View tx
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            )}
+          </span>
+        </div>
+      )}
+      {isMiniApp && showXLink && campaign.tweetUrl && (
+        <div className="mt-3 rounded-lg border border-marine/20 bg-marine/10 p-3 dark:border-sky-300/20 dark:bg-sky-300/10">
+          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-marine dark:text-sky-300">
+            X link
+          </p>
+          <input
+            readOnly
+            value={campaign.tweetUrl}
+            onFocus={(event) => event.currentTarget.select()}
+            className="mt-2 h-10 w-full rounded-md border border-ink/10 bg-[#fffdf8] px-3 text-xs font-bold text-ink outline-none dark:border-white/10 dark:bg-black/20 dark:text-white"
+            aria-label="X post link"
+          />
+          <p className="mt-2 text-xs font-bold leading-5 text-ink/52 dark:text-white/55">
+            Select this link, open it outside the Playground, then return here to verify.
+          </p>
+        </div>
+      )}
+      </div>
+    </article>
+  );
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-ink/10 bg-[#f0ede5] p-4 dark:border-white/10 dark:bg-white/5">
+      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-ink/42 dark:text-white/42">{label}</p>
+      <p className="mt-1 truncate font-display text-xl font-black">{value}</p>
+    </div>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-ink/10 bg-[#f0ede5] px-3.5 py-3.5 dark:border-white/15 dark:bg-white/5">
+      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-ink/42 dark:text-white/42">{label}</p>
+      <p className="mt-1 break-words font-display text-lg font-black leading-tight">{value}</p>
+    </div>
+  );
+}
+
+function DashboardStat({
+  icon: Icon,
+  label,
+  value,
+  detail,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+  detail: string;
+}) {
+  return (
+    <div className="rounded-lg border border-ink/10 bg-[#fbfaf6] p-5 shadow-sm dark:border-white/10 dark:bg-white/5">
+      <div className="flex items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-ink/10 bg-[#f0ede5] text-ink/70 dark:border-white/10 dark:bg-white/10 dark:text-white/75">
+          <Icon className="h-5 w-5" />
+        </span>
+        <div className="min-w-0">
+          <p className="truncate text-[10px] font-black uppercase tracking-[0.14em] text-ink/42 dark:text-white/42">
+            {label}
+          </p>
+          <p className="mt-0.5 truncate font-display text-2xl font-black tracking-tight">{value}</p>
+        </div>
+      </div>
+      <p className="mt-4 truncate text-xs font-bold text-ink/50 dark:text-white/55">{detail}</p>
+    </div>
+  );
+}
+
+function FlowStep({
+  icon: Icon,
+  step,
+  title,
+  detail,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  step: string;
+  title: string;
+  detail: string;
+}) {
+  return (
+    <div className="flex gap-4">
+      <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-ink/10 bg-[#f0ede5] text-ink/70 dark:border-white/10 dark:bg-white/10 dark:text-white/75">
+        <Icon className="h-5 w-5" />
+      </span>
+      <div className="min-w-0">
+        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-citrus">{step}</p>
+        <h3 className="mt-0.5 font-display text-lg font-black leading-tight">{title}</h3>
+        <p className="mt-1 text-xs font-bold leading-5 text-ink/52 dark:text-white/55">{detail}</p>
+      </div>
+    </div>
+  );
+}
+
+function StatusLine({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/5 p-3">
+      <div className="flex items-center gap-3">
+        <span className="flex h-9 w-9 items-center justify-center rounded-md border border-white/10 bg-white/8">
+          <Icon className="h-4 w-4 text-white/70" />
+        </span>
+        <span className="text-sm font-bold text-white/68">{label}</span>
+      </div>
+      <span className="font-display text-xl font-black">{value}</span>
+    </div>
+  );
+}
+
+function ProofPill({
+  icon: Icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+  tone: "success" | "warn" | "neutral";
+}) {
+  const toneClass =
+    tone === "success"
+      ? "border-emerald-600/20 bg-emerald-600/10 text-emerald-800 dark:border-emerald-300/25 dark:bg-emerald-300/10 dark:text-emerald-100"
+      : tone === "warn"
+        ? "border-citrus/35 bg-citrus/15 text-orange-800 dark:text-orange-100"
+        : "border-ink/12 bg-ink/6 text-ink/72 dark:border-white/10 dark:bg-white/10 dark:text-white/75";
+
+  return (
+    <span className={`inline-flex items-center gap-2 rounded-md border px-3 py-2 text-xs font-black uppercase tracking-[0.12em] ${toneClass}`}>
+      <Icon className="h-3.5 w-3.5" />
+      <span>{label}</span>
+      <span className="text-current/80">{value}</span>
+    </span>
+  );
+}

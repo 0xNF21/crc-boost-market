@@ -1,0 +1,48 @@
+{
+  "name": "crc-boost-market",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start -H 0.0.0.0 -p 5000",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "db:check": "drizzle-kit check"
+  },
+  "dependencies": {
+    "@aboutcircles/sdk": "^0.1.19",
+    "@aboutcircles/sdk-transfers": "^0.1.19",
+    "@aboutcircles/sdk-utils": "^0.1.19",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.37.0",
+    "@vercel/analytics": "^2.0.1",
+    "drizzle-orm": "^0.45.1",
+    "ethers": "^6.16.0",
+    "lucide-react": "^0.454.0",
+    "next": "14.2.35",
+    "pg": "^8.18.0",
+    "qrcode": "^1.5.4",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "viem": "^2.45.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "@types/pg": "^8.16.0",
+    "@types/react": "^18.2.67",
+    "@types/react-dom": "^18.2.22",
+    "@types/qrcode": "^1.5.5",
+    "autoprefixer": "^10.4.19",
+    "drizzle-kit": "^0.31.9",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "14.2.35",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.3",
+    "typescript": "^5.4.5"
+  }
+}

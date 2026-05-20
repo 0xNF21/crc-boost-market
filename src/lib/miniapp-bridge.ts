@@ -1,0 +1,261 @@
+/**
+ * Circles Mini App Bridge
+ *
+ * Handles postMessage communication between NF Society (running in iframe)
+ * and the Circles Mini App host.
+ *
+ * Protocol:
+ *   Mini App → Host: request_address, send_transactions, sign_message
+ *   Host → Mini App: wallet_connected, wallet_disconnected, tx_success, tx_rejected, app_data
+ */
+
+// ── Types ──────────────────────────────────────────────────────────
+
+export type MiniAppMessage =
+  | { type: "wallet_connected"; address: string }
+  | { type: "wallet_disconnected" }
+  | { type: "tx_success"; hashes: string[]; requestId: string }
+  | { type: "tx_rejected"; reason?: string; requestId: string }
+  | { type: "sign_success"; signature: string; verified?: boolean; requestId: string }
+  | { type: "sign_rejected"; reason?: string; requestId: string }
+  | { type: "app_data"; data: unknown };
+
+type PendingTx = {
+  resolve: (hashes: string[]) => void;
+  reject: (reason: string) => void;
+};
+
+type PendingSig = {
+  resolve: (result: { signature: string; verified?: boolean }) => void;
+  reject: (reason: string) => void;
+};
+
+export type MiniAppTransaction = {
+  to: string;
+  data?: string;
+  value?: string;
+};
+
+// ── State ──────────────────────────────────────────────────────────
+
+let walletAddress: string | null = null;
+let walletListeners: Array<(address: string | null) => void> = [];
+let appDataListeners: Array<(data: string) => void> = [];
+let pendingTxs = new Map<string, PendingTx>();
+let pendingSigs = new Map<string, PendingSig>();
+let messageListenerAttached = false;
+
+// ── Detection ──────────────────────────────────────────────────────
+
+/** Returns true if running inside an iframe (Circles Mini App host) */
+export function isMiniApp(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window !== window.parent;
+  } catch {
+    // Cross-origin iframe — we are indeed in an iframe
+    return true;
+  }
+}
+
+// ── Message handling ───────────────────────────────────────────────
+
+function handleMessage(event: MessageEvent) {
+  const data = event.data;
+  if (!data || typeof data.type !== "string") return;
+
+  switch (data.type) {
+    case "wallet_connected": {
+      walletAddress = data.address?.toLowerCase() ?? null;
+      walletListeners.forEach((cb) => cb(walletAddress));
+      break;
+    }
+    case "wallet_disconnected": {
+      walletAddress = null;
+      walletListeners.forEach((cb) => cb(null));
+      break;
+    }
+    case "tx_success": {
+      const pending = pendingTxs.get(data.requestId);
+      if (pending) {
+        pending.resolve(data.hashes ?? []);
+        pendingTxs.delete(data.requestId);
+      }
+      break;
+    }
+    case "tx_rejected": {
+      const pending = pendingTxs.get(data.requestId);
+      if (pending) {
+        pending.reject(data.reason ?? "Transaction rejected");
+        pendingTxs.delete(data.requestId);
+      }
+      break;
+    }
+    case "sign_success": {
+      const pending = pendingSigs.get(data.requestId);
+      if (pending) {
+        pending.resolve({ signature: data.signature, verified: data.verified });
+        pendingSigs.delete(data.requestId);
+      }
+      break;
+    }
+    case "sign_rejected": {
+      const pending = pendingSigs.get(data.requestId);
+      if (pending) {
+        pending.reject(data.reason ?? "Signature rejected");
+        pendingSigs.delete(data.requestId);
+      }
+      break;
+    }
+    case "app_data": {
+      const payload = typeof data.data === "string" ? data.data : "";
+      if (payload) {
+        appDataListeners.forEach((cb) => cb(payload));
+      }
+      break;
+    }
+  }
+}
+
+function ensureListener() {
+  if (messageListenerAttached || typeof window === "undefined") return;
+  window.addEventListener("message", handleMessage);
+  messageListenerAttached = true;
+}
+
+// ── Public API ─────────────────────────────────────────────────────
+
+/** Request the wallet address from the Circles host */
+export function requestAddress(): void {
+  if (typeof window === "undefined") return;
+  ensureListener();
+  window.parent.postMessage({ type: "request_address" }, "*");
+}
+
+/** Subscribe to wallet address changes. Returns unsubscribe function. */
+export function onWalletChange(callback: (address: string | null) => void): () => void {
+  ensureListener();
+  walletListeners.push(callback);
+  // Immediately call with current value if available
+  if (walletAddress) callback(walletAddress);
+  return () => {
+    walletListeners = walletListeners.filter((cb) => cb !== callback);
+  };
+}
+
+/** Subscribe to app_data from Circles host (deep link parameters). Returns unsubscribe. */
+export function onAppData(callback: (data: string) => void): () => void {
+  ensureListener();
+  appDataListeners.push(callback);
+  return () => {
+    appDataListeners = appDataListeners.filter((cb) => cb !== callback);
+  };
+}
+
+/** Get the current wallet address (may be null if not yet connected) */
+export function getWalletAddress(): string | null {
+  return walletAddress;
+}
+
+/**
+ * Send a raw EVM transaction batch through the Circles host wallet.
+ *
+ * Important: `value` is native xDAI, not CRC. CRC transfers must be encoded
+ * as Circles contract calls before using this bridge.
+ *
+ * Returns the transaction hashes on success, throws on rejection.
+ */
+export function sendTransactions(transactions: MiniAppTransaction[]): Promise<string[]> {
+  ensureListener();
+
+  const requestId = crypto.randomUUID();
+
+  return new Promise((resolve, reject) => {
+    pendingTxs.set(requestId, { resolve, reject });
+
+    window.parent.postMessage(
+      {
+        type: "send_transactions",
+        transactions,
+        requestId,
+      },
+      "*"
+    );
+
+    // Timeout after 2 minutes
+    setTimeout(() => {
+      if (pendingTxs.has(requestId)) {
+        pendingTxs.delete(requestId);
+        reject("Transaction timed out");
+      }
+    }, 120_000);
+  });
+}
+
+/**
+ * Legacy helper kept for older app surfaces. `amountWei` is native xDAI, so
+ * new CRC flows should call `sendTransactions` with encoded Circles calldata.
+ */
+export function sendCrcTransfer(
+  to: string,
+  amountWei: string,
+  data?: string
+): Promise<string[]> {
+  const tx: MiniAppTransaction = { to, value: amountWei };
+  if (data) tx.data = data;
+  return sendTransactions([tx]);
+}
+
+/**
+ * Ask the Circles host to sign a message via passkey. Used by the auth
+ * flow to prove wallet ownership without paying 1 CRC.
+ *
+ * The host returns `{ signature, verified }`. The server still re-verifies
+ * the signature against the wallet (EIP-1271 for Safes) — never trust
+ * `verified` blindly.
+ *
+ * @param message Plain text to sign (typically the challenge message)
+ * @param signatureType "erc1271" by default for Circles Safe/passkey wallets
+ */
+export function signMessage(
+  message: string,
+  signatureType: "raw" | "erc1271" = "erc1271",
+): Promise<{ signature: string; verified?: boolean }> {
+  ensureListener();
+
+  const requestId = crypto.randomUUID();
+
+  return new Promise((resolve, reject) => {
+    pendingSigs.set(requestId, { resolve, reject });
+
+    window.parent.postMessage(
+      {
+        type: "sign_message",
+        message,
+        signatureType,
+        requestId,
+      },
+      "*",
+    );
+
+    // Timeout after 2 minutes — same as tx.
+    setTimeout(() => {
+      if (pendingSigs.has(requestId)) {
+        pendingSigs.delete(requestId);
+        reject("Signature timed out");
+      }
+    }, 120_000);
+  });
+}
+
+/** Clean up all listeners (call on unmount) */
+export function cleanup() {
+  if (typeof window === "undefined") return;
+  window.removeEventListener("message", handleMessage);
+  messageListenerAttached = false;
+  walletListeners = [];
+  appDataListeners = [];
+  pendingTxs.clear();
+  pendingSigs.clear();
+  walletAddress = null;
+}

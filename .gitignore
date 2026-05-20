@@ -1,0 +1,15 @@
+node_modules
+.next
+out
+.env
+.env.local
+.env.*.local
+.env.neon
+.DS_Store
+.local/
+.claude/worktrees/
+nf_society_export.sql
+tsconfig.tsbuildinfo
+attached_assets/
+
+.vercel
