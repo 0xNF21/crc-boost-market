@@ -1569,84 +1569,7 @@ export default function CirclesGaragePage() {
           )}
 
           {garageSection === "profile" && (
-            <div className="grid min-w-0 gap-6 lg:grid-cols-[380px_minmax(0,1fr)]">
-          <div className="min-w-0 rounded-lg border border-ink/10 bg-[#fbfaf6] p-5 shadow-sm dark:border-white/10 dark:bg-white/5 sm:p-6">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45 dark:text-white/45">
-                  Invite
-                </p>
-                <h2 className="font-display text-xl font-black">Referral link</h2>
-              </div>
-              <button
-                type="button"
-                onClick={copyInviteLink}
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-ink px-3 text-sm font-black text-white dark:bg-white dark:text-ink"
-              >
-                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                {copied ? "Copied" : "Copy"}
-              </button>
-            </div>
-            <code className="mt-5 block min-w-0 max-w-full truncate rounded-md bg-[#f0ede5] px-3 py-2.5 text-xs font-bold text-ink/65 dark:bg-black/20 dark:text-white/70">
-              {inviteLink}
-            </code>
-            <p className="mt-3 text-sm font-bold leading-6 text-ink/55 dark:text-white/58">
-              Share this Circles-name link. When a new wallet connects from it and completes verified boost missions, you unlock referral CRC for that invited user.
-            </p>
-            <div className="mt-5 grid gap-3 sm:grid-cols-3">
-              <MiniStat label="Invited" value={formatNumber(referrals.mine.total)} />
-              <MiniStat label="Activated" value={formatNumber(referrals.rewards.activatedWallets)} />
-              <MiniStat label="Bonus" value={`${formatNumber(referrals.rewards.crcEarned)} CRC`} />
-            </div>
-            <div className="mt-5 min-w-0 rounded-lg border border-ink/10 bg-[#f0ede5] p-4 dark:border-white/10 dark:bg-white/5">
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-ink/45 dark:text-white/45">
-                    Referral rewards
-                  </p>
-                  <h3 className="font-display text-lg font-black">Per invited wallet</h3>
-                </div>
-                <span className="w-fit rounded-md bg-citrus/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-citrus">
-                  rewards stack
-                </span>
-              </div>
-              <div className="mt-4 grid gap-3">
-                {referrals.milestones.map((milestone) => (
-                  <div
-                    key={milestone.threshold}
-                    className="grid min-w-0 gap-3 rounded-md border border-ink/10 bg-[#fbfaf6] p-3 dark:border-white/10 dark:bg-black/20 sm:grid-cols-[minmax(0,1fr)_auto]"
-                  >
-                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-ink/42 dark:text-white/42">
-                        Invited wallet completes
-                      </p>
-                      <p className="mt-1 font-display text-lg font-black">
-                        {formatNumber(milestone.threshold)} verified{" "}
-                        {milestone.threshold === 1 ? "mission" : "missions"}
-                      </p>
-                    </div>
-                    <div className="sm:text-right">
-                      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-ink/42 dark:text-white/42">
-                        You receive
-                      </p>
-                      <p className="mt-1 font-display text-lg font-black text-citrus">
-                        +{formatNumber(milestone.amountCrc)} CRC
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <p className="mt-3 text-xs font-bold leading-5 text-ink/50 dark:text-white/50">
-                If the same invited wallet reaches 5 verified missions, the 1, 3, and 5 mission bonuses all unlock.
-              </p>
-            </div>
-            {referrals.rewards.pendingCrc > 0 && (
-              <p className="mt-3 text-xs font-bold text-ink/50 dark:text-white/50">
-                {formatNumber(referrals.rewards.pendingCrc)} CRC referral bonus pending.
-              </p>
-            )}
-          </div>
-
+            <div className="min-w-0 space-y-6">
           <div className="min-w-0 rounded-lg border border-ink/10 bg-[#fbfaf6] p-5 shadow-sm dark:border-white/10 dark:bg-white/5 sm:p-6">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -1687,7 +1610,7 @@ export default function CirclesGaragePage() {
                   </div>
                 </div>
 
-                <div className="mt-5 grid grid-cols-2 gap-3">
+                <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
                   <MiniStat label="Actions" value={formatNumber(status.personal.verifiedActions)} />
                   <MiniStat label="Earned" value={`${formatNumber(status.personal.crcEarned)} CRC`} />
                   <MiniStat label="Pending" value={`${formatNumber(status.personal.crcPending)} CRC`} />
@@ -1766,11 +1689,88 @@ export default function CirclesGaragePage() {
               </button>
             )}
           </div>
+
+          <div className="min-w-0 rounded-lg border border-ink/10 bg-[#fbfaf6] p-5 shadow-sm dark:border-white/10 dark:bg-white/5 sm:p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45 dark:text-white/45">
+                  Invite
+                </p>
+                <h2 className="font-display text-xl font-black">Referral link</h2>
+              </div>
+              <button
+                type="button"
+                onClick={copyInviteLink}
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-ink px-3 text-sm font-black text-white dark:bg-white dark:text-ink"
+              >
+                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {copied ? "Copied" : "Copy"}
+              </button>
+            </div>
+            <code className="mt-5 block min-w-0 max-w-full truncate rounded-md bg-[#f0ede5] px-3 py-2.5 text-xs font-bold text-ink/65 dark:bg-black/20 dark:text-white/70">
+              {inviteLink}
+            </code>
+            <p className="mt-3 text-sm font-bold leading-6 text-ink/55 dark:text-white/58">
+              Share this Circles-name link. When a new wallet connects from it and completes verified boost missions, you unlock referral CRC for that invited user.
+            </p>
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <MiniStat label="Invited" value={formatNumber(referrals.mine.total)} />
+              <MiniStat label="Activated" value={formatNumber(referrals.rewards.activatedWallets)} />
+              <MiniStat label="Bonus" value={`${formatNumber(referrals.rewards.crcEarned)} CRC`} />
+            </div>
+            <div className="mt-5 min-w-0 rounded-lg border border-ink/10 bg-[#f0ede5] p-4 dark:border-white/10 dark:bg-white/5">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-ink/45 dark:text-white/45">
+                    Referral rewards
+                  </p>
+                  <h3 className="font-display text-lg font-black">Per invited wallet</h3>
+                </div>
+                <span className="w-fit rounded-md bg-citrus/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-citrus">
+                  rewards stack
+                </span>
+              </div>
+              <div className="mt-4 grid gap-3 lg:grid-cols-3">
+                {referrals.milestones.map((milestone) => (
+                  <div
+                    key={milestone.threshold}
+                    className="grid min-w-0 gap-3 rounded-md border border-ink/10 bg-[#fbfaf6] p-3 dark:border-white/10 dark:bg-black/20"
+                  >
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-ink/42 dark:text-white/42">
+                        Invited wallet completes
+                      </p>
+                      <p className="mt-1 font-display text-lg font-black">
+                        {formatNumber(milestone.threshold)} verified{" "}
+                        {milestone.threshold === 1 ? "mission" : "missions"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-ink/42 dark:text-white/42">
+                        You receive
+                      </p>
+                      <p className="mt-1 font-display text-lg font-black text-citrus">
+                        +{formatNumber(milestone.amountCrc)} CRC
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-3 text-xs font-bold leading-5 text-ink/50 dark:text-white/50">
+                If the same invited wallet reaches 5 verified missions, the 1, 3, and 5 mission bonuses all unlock.
+              </p>
+            </div>
+            {referrals.rewards.pendingCrc > 0 && (
+              <p className="mt-3 text-xs font-bold text-ink/50 dark:text-white/50">
+                {formatNumber(referrals.rewards.pendingCrc)} CRC referral bonus pending.
+              </p>
+            )}
+          </div>
             </div>
           )}
 
           {garageSection === "creator" && (
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+            <div className="space-y-6">
           <CreatorDashboard
             campaigns={creatorCampaigns}
             isAuthenticated={isAuthenticated}
@@ -1784,7 +1784,6 @@ export default function CirclesGaragePage() {
             fundingFeedback={fundingFeedback}
             fundingSentTxs={fundingSentTxs}
           />
-          <div className="space-y-6">
           <form
             onSubmit={createCampaign}
             className="rounded-lg border border-ink/10 bg-[#fbfaf6] p-6 shadow-sm dark:border-white/10 dark:bg-white/5"
@@ -1809,7 +1808,8 @@ export default function CirclesGaragePage() {
                 </div>
               </div>
             </div>
-            <div className="mt-5 grid gap-4">
+            <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(340px,0.9fr)] lg:items-start">
+              <div className="grid gap-4">
               <input
                 id="garage-boost-title"
                 value={createForm.title}
@@ -1923,17 +1923,6 @@ export default function CirclesGaragePage() {
                 />
                 <MiniStat label="Total" value={`${formatNumber(createCost.totalCrc)} CRC`} />
               </div>
-              <CreatorCampaignPreview
-                title={createTitle}
-                description={createDescription}
-                action={createForm.action}
-                tweet={createTweet}
-                rewardCrc={createRewardCrc}
-                maxClaims={createMaxClaims}
-                totalCrc={createCost.totalCrc}
-                settlementSeconds={status.settings.payoutDelaySeconds}
-                ready={createReady}
-              />
               {isAuthenticated ? (
                 <button
                   type="submit"
@@ -1953,6 +1942,18 @@ export default function CirclesGaragePage() {
                   Connect to launch
                 </button>
               )}
+              </div>
+              <CreatorCampaignPreview
+                title={createTitle}
+                description={createDescription}
+                action={createForm.action}
+                tweet={createTweet}
+                rewardCrc={createRewardCrc}
+                maxClaims={createMaxClaims}
+                totalCrc={createCost.totalCrc}
+                settlementSeconds={status.settings.payoutDelaySeconds}
+                ready={createReady}
+              />
             </div>
           </form>
 
@@ -2020,7 +2021,6 @@ export default function CirclesGaragePage() {
               />
             </div>
           )}
-          </div>
             </div>
           )}
       </section>
