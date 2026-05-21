@@ -747,9 +747,9 @@ export default function CirclesGaragePage() {
     setNotice(
       xAuthUrl
         ? didCopy
-          ? "Twitter login link copied. Playground: desktop Ctrl/Cmd-click Link X, or mobile long-press it and open outside. Link X once, then come back."
+          ? "X login link copied. Playground: desktop Ctrl/Cmd-click Link X, or mobile long-press it and open outside. Link X once, then come back."
           : `Playground: desktop Ctrl/Cmd-click Link X, or mobile long-press it and open outside: ${xLoginUrl}`
-        : "Preparing the Twitter login link. If it opens the app instead of Twitter, wait a second and try again.",
+        : "Preparing the X login link. If it opens the app instead of X, wait a second and try again.",
     );
   }
 
@@ -1261,7 +1261,7 @@ export default function CirclesGaragePage() {
                 </a>
                 {isMiniApp && !status.linkedAccount && (
                   <div className="rounded-xl border border-marine/15 bg-marine/10 p-3 text-[11px] font-bold leading-5 text-ink/62 dark:border-sky-300/20 dark:bg-sky-300/10 dark:text-white/65">
-                    <p>Playground: open Twitter auth outside, then come back.</p>
+                    <p>Playground: open X auth outside, then come back.</p>
                     {xAuthUrl ? (
                       <a
                         href={xAuthUrl}
@@ -1269,12 +1269,12 @@ export default function CirclesGaragePage() {
                         rel="noopener noreferrer"
                         className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-ink px-3 py-2 text-xs font-black text-white transition hover:bg-ink/90 dark:bg-white dark:text-ink"
                       >
-                        Open Twitter login
+                        Open X login
                         <ExternalLink className="h-3.5 w-3.5" />
                       </a>
                     ) : (
                       <span className="mt-2 inline-flex w-full items-center justify-center rounded-lg border border-ink/10 px-3 py-2 text-xs font-black text-ink/45 dark:border-white/10 dark:text-white/45">
-                        Preparing Twitter login...
+                        Preparing X login...
                       </span>
                     )}
                   </div>
