@@ -1108,16 +1108,16 @@ export default function CirclesGaragePage() {
 
       <section className="garage-header sticky top-0 z-30 border-b border-ink/10 bg-sand/90 pt-14 backdrop-blur-xl dark:border-white/10 dark:bg-[#0a0a0a]/90 sm:pt-0">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-          <Link href="/" className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-3.5">
             <Image
               src="/crc-boost-icon.png"
               alt="CRC Boost"
-              width={40}
-              height={40}
-              className="h-10 w-10 rounded-xl border border-ink/10 bg-white object-cover p-0.5 dark:border-white/10"
+              width={52}
+              height={52}
+              className="h-12 w-12 rounded-2xl border border-ink/10 bg-white object-cover p-0.5 dark:border-white/10"
             />
             <div>
-              <p className="text-sm font-black uppercase tracking-[0.18em]">CRC Boosts</p>
+              <p className="text-base font-black uppercase tracking-[0.18em]">CRC Boosts</p>
               <p className="text-xs font-bold text-ink/50 dark:text-white/55">by NF-Society</p>
             </div>
           </Link>
