@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { getAuthenticatedAddress } from "@/lib/auth/session";
 import { garageXAccounts } from "@/lib/db/schema";
+import { readSignedXOAuthState } from "@/lib/garage-x-oauth-state";
 import { enforceRateLimit } from "@/lib/rate-limit";
 
 const OAUTH_COOKIE = "nfs_x_oauth";
@@ -197,22 +198,25 @@ export async function GET(req: NextRequest) {
   const limited = await enforceRateLimit(req, "garage-x-oauth-callback", 60, 60_000);
   if (limited) return limited;
 
-  const pending = readPending(req);
+  const state = req.nextUrl.searchParams.get("state");
+  const signedPending = readSignedXOAuthState(state);
+  const cookiePending = readPending(req);
+  const pending = signedPending ?? (cookiePending?.state === state ? cookiePending : null);
   if (!pending) return redirectTo(req, "/garage", "oauth-state-missing");
 
   const error = req.nextUrl.searchParams.get("error");
   if (error) return redirectTo(req, pending.returnTo, "oauth-cancelled");
 
-  const state = req.nextUrl.searchParams.get("state");
   const code = req.nextUrl.searchParams.get("code");
   if (!state || state !== pending.state || !code) {
     return redirectTo(req, pending.returnTo, "oauth-state-invalid");
   }
 
-  const address = await getAuthenticatedAddress(req).catch(() => null);
-  if (!address || address.toLowerCase() !== pending.address.toLowerCase()) {
+  const sessionAddress = await getAuthenticatedAddress(req).catch(() => null);
+  if (!signedPending && (!sessionAddress || sessionAddress.toLowerCase() !== pending.address.toLowerCase())) {
     return redirectTo(req, pending.returnTo, "wallet-session-lost");
   }
+  const address = pending.address.toLowerCase();
 
   try {
     const accessToken = await exchangeCode(req, code, pending.codeVerifier);

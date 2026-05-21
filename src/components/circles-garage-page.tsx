@@ -423,6 +423,7 @@ export default function CirclesGaragePage() {
   const [fundingSentTxs, setFundingSentTxs] = useState<FundingSentState>({});
   const [copied, setCopied] = useState(false);
   const [visibleXLinkCampaignId, setVisibleXLinkCampaignId] = useState<number | null>(null);
+  const [xAuthUrl, setXAuthUrl] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [garageSection, setGarageSection] = useState<GarageSection>("boosts");
   const [leaderboardProfiles, setLeaderboardProfiles] = useState<Record<string, CirclesProfile>>({});
@@ -523,6 +524,36 @@ export default function CirclesGaragePage() {
     setOrigin(window.location.origin);
     void loadData();
   }, [loadData, isAuthenticated, address]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadXAuthUrl() {
+      if (!isMiniApp || !isAuthenticated || status.linkedAccount) {
+        setXAuthUrl(null);
+        return;
+      }
+
+      try {
+        const res = await fetch(`${X_CONNECT_START_URL}&format=json`, {
+          cache: "no-store",
+          credentials: "include",
+          headers: clientAuthHeaders(),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!cancelled) {
+          setXAuthUrl(typeof data?.authUrl === "string" ? data.authUrl : null);
+        }
+      } catch {
+        if (!cancelled) setXAuthUrl(null);
+      }
+    }
+
+    void loadXAuthUrl();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, isMiniApp, status.linkedAccount]);
 
   useEffect(() => {
     const next: FundingSentState = {};
@@ -709,14 +740,16 @@ export default function CirclesGaragePage() {
   }
 
   async function showMiniAppXLoginHint() {
-    const xLoginUrl = origin ? `${origin}${X_CONNECT_START_URL}` : X_CONNECT_START_URL;
+    const xLoginUrl = xAuthUrl || (origin ? `${origin}${X_CONNECT_START_URL}` : X_CONNECT_START_URL);
     const didCopy = await copyText(xLoginUrl);
     setNoticeTone("success");
     setNoticeTxHash(null);
     setNotice(
-      didCopy
-        ? "X login link copied. Playground: desktop Ctrl/Cmd-click Link X, or mobile long-press it and open outside. Link X once, then come back."
-        : `Playground: desktop Ctrl/Cmd-click Link X, or mobile long-press it and open outside: ${xLoginUrl}`,
+      xAuthUrl
+        ? didCopy
+          ? "Twitter login link copied. Playground: desktop Ctrl/Cmd-click Link X, or mobile long-press it and open outside. Link X once, then come back."
+          : `Playground: desktop Ctrl/Cmd-click Link X, or mobile long-press it and open outside: ${xLoginUrl}`
+        : "Preparing the Twitter login link. If it opens the app instead of Twitter, wait a second and try again.",
     );
   }
 
@@ -1052,6 +1085,11 @@ export default function CirclesGaragePage() {
   const circlesDisplayName = myProfile?.name?.trim() || (profileAddress ? shortAddress(profileAddress) : "Connect wallet");
   const circlesAvatarUrl = myProfile?.imageUrl || null;
   const primaryFundingSent = fundingPayment ? hasFundingSent(fundingSentTxs, fundingPayment.campaignId) : false;
+  const xConnectHref = isAuthenticated
+    ? isMiniApp
+      ? xAuthUrl || "#twitter-login-preparing"
+      : X_CONNECT_START_URL
+    : "#connect-wallet";
 
   function openGarageSection(section: GarageSection) {
     setGarageSection(section);
@@ -1192,9 +1230,9 @@ export default function CirclesGaragePage() {
                   </span>
                 </button>
                 <a
-                  href={isAuthenticated ? X_CONNECT_START_URL : "#connect-wallet"}
-                  target={isMiniApp && isAuthenticated ? "_blank" : undefined}
-                  rel={isMiniApp && isAuthenticated ? "noopener noreferrer" : undefined}
+                  href={xConnectHref}
+                  target={isMiniApp && isAuthenticated && xAuthUrl ? "_blank" : undefined}
+                  rel={isMiniApp && isAuthenticated && xAuthUrl ? "noopener noreferrer" : undefined}
                   onClick={(event) => {
                     if (!isAuthenticated || !isMiniApp) {
                       event.preventDefault();
@@ -1202,6 +1240,9 @@ export default function CirclesGaragePage() {
                       return;
                     }
 
+                    if (!xAuthUrl) {
+                      event.preventDefault();
+                    }
                     void showMiniAppXLoginHint();
                   }}
                   className="flex items-center gap-3 rounded-2xl border border-ink/10 bg-white/70 p-3 text-left text-ink transition hover:border-marine/25 hover:bg-white dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/15"

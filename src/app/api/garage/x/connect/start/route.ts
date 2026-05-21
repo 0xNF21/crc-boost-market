@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createHash, randomBytes } from "crypto";
 import { requireAuthenticatedAddress } from "@/lib/auth/session";
 import { GARAGE_X_SCOPES, isXOAuthConfigured } from "@/lib/garage-x";
+import { createSignedXOAuthState } from "@/lib/garage-x-oauth-state";
 import { enforceRateLimit } from "@/lib/rate-limit";
 
 const OAUTH_COOKIE = "nfs_x_oauth";
@@ -25,25 +26,36 @@ export async function GET(req: NextRequest) {
   const limited = await enforceRateLimit(req, "garage-x-oauth-start", 60, 60_000);
   if (limited) return limited;
 
+  const wantsJson = req.nextUrl.searchParams.get("format") === "json";
   const redirectUri = getRedirectUri(req);
   const appOrigin = new URL(redirectUri).origin;
   const addressOr401 = await requireAuthenticatedAddress(req);
   if (addressOr401 instanceof NextResponse) {
+    if (wantsJson) {
+      return NextResponse.json({ error: "AUTH_REQUIRED" }, { status: 401 });
+    }
     const redirect = new URL("/garage", appOrigin);
     redirect.searchParams.set("x", "connect-wallet-first");
     return NextResponse.redirect(redirect);
   }
 
   if (!isXOAuthConfigured()) {
+    if (wantsJson) {
+      return NextResponse.json({ error: "OAUTH_MISSING" }, { status: 503 });
+    }
     const redirect = new URL("/garage", appOrigin);
     redirect.searchParams.set("x", "oauth-missing");
     return NextResponse.redirect(redirect);
   }
 
-  const state = base64url(randomBytes(24));
   const codeVerifier = base64url(randomBytes(48));
   const codeChallenge = base64url(createHash("sha256").update(codeVerifier).digest());
   const returnTo = getReturnTo(req);
+  const state = createSignedXOAuthState({
+    codeVerifier,
+    address: addressOr401,
+    returnTo,
+  });
 
   const authUrl = new URL("https://twitter.com/i/oauth2/authorize");
   authUrl.searchParams.set("response_type", "code");
@@ -54,7 +66,7 @@ export async function GET(req: NextRequest) {
   authUrl.searchParams.set("code_challenge", codeChallenge);
   authUrl.searchParams.set("code_challenge_method", "S256");
 
-  const res = NextResponse.redirect(authUrl);
+  const res = wantsJson ? NextResponse.json({ authUrl: authUrl.toString() }) : NextResponse.redirect(authUrl);
   res.cookies.set({
     name: OAUTH_COOKIE,
     value: Buffer.from(
