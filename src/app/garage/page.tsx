@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import CirclesGaragePage from "@/components/circles-garage-page";
 
 export const metadata: Metadata = {
-  title: "CRC Boost Market by NF Society",
+  title: "CRC Boosts by NF-Society",
   description:
     "A Circles-native attention market where creators fund CRC rewards for verified X actions.",
 };

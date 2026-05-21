@@ -1082,7 +1082,7 @@ export default function CirclesGaragePage() {
 
   return (
     <main className="garage-theme relative isolate min-h-screen w-full max-w-full overflow-x-hidden pb-16 text-ink dark:text-white">
-      <div className="fixed left-2 right-2 top-3 z-50 flex max-w-[calc(100vw-1rem)] items-center justify-end gap-1.5 sm:hidden">
+      <div className="fixed left-2 right-2 top-3 z-50 flex max-w-[calc(100vw-1rem)] items-center justify-end gap-1.5 sm:left-auto sm:right-5 sm:top-4 sm:gap-2">
         <LanguageSwitcher className="h-11 shrink-0 rounded-2xl border border-ink/10 bg-white/80 px-1.5 shadow-[0_18px_55px_-32px_rgba(20,20,24,0.75)] backdrop-blur-xl dark:border-white/10 dark:bg-[#202024]/90 sm:px-2" />
         <button
           type="button"
@@ -1109,35 +1109,18 @@ export default function CirclesGaragePage() {
       <section className="garage-header sticky top-0 z-30 border-b border-ink/10 bg-sand/90 pt-14 backdrop-blur-xl dark:border-white/10 dark:bg-[#0a0a0a]/90 sm:pt-0">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <Link href="/" className="flex items-center gap-3">
-            <Image src="/nf-society-logo.png" alt="NF Society" width={36} height={36} className="h-9 w-9 rounded-lg" />
+            <Image
+              src="/crc-boost-icon.png"
+              alt="CRC Boost"
+              width={40}
+              height={40}
+              className="h-10 w-10 rounded-xl border border-ink/10 bg-white object-cover p-0.5 dark:border-white/10"
+            />
             <div>
               <p className="text-sm font-black uppercase tracking-[0.18em]">CRC Boosts</p>
               <p className="text-xs font-bold text-ink/50 dark:text-white/55">by NF-Society</p>
             </div>
           </Link>
-          <div className="hidden items-center gap-2 sm:flex">
-            <LanguageSwitcher className="h-11 shrink-0 rounded-2xl border border-ink/10 bg-white/80 px-2 shadow-[0_18px_55px_-32px_rgba(20,20,24,0.75)] backdrop-blur-xl dark:border-white/10 dark:bg-[#202024]/90" />
-            <button
-              type="button"
-              onClick={() => openGarageSection("profile")}
-              className="inline-flex h-11 max-w-[210px] shrink-0 items-center gap-2 overflow-hidden rounded-2xl border border-ink/10 bg-white/80 px-2.5 text-sm font-black text-ink shadow-[0_18px_55px_-32px_rgba(20,20,24,0.75)] backdrop-blur-xl transition hover:border-marine/25 hover:bg-white dark:border-white/10 dark:bg-[#202024]/90 dark:text-white dark:hover:bg-white/15"
-              title="Profile"
-              aria-label="Open profile"
-            >
-              {circlesAvatarUrl ? (
-                <img
-                  src={circlesAvatarUrl}
-                  alt={circlesDisplayName}
-                  className="h-8 w-8 shrink-0 rounded-full border border-ink/10 object-cover dark:border-white/10"
-                />
-              ) : (
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink text-white dark:bg-white dark:text-ink">
-                  <Wallet className="h-4 w-4" />
-                </span>
-              )}
-              <span className="min-w-0 truncate">{loading ? "loading" : circlesDisplayName}</span>
-            </button>
-          </div>
         </div>
       </section>
 
