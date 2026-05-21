@@ -1260,9 +1260,24 @@ export default function CirclesGaragePage() {
                   </span>
                 </a>
                 {isMiniApp && !status.linkedAccount && (
-                  <p className="rounded-xl border border-marine/15 bg-marine/10 px-3 py-2 text-[11px] font-bold leading-5 text-ink/62 dark:border-sky-300/20 dark:bg-sky-300/10 dark:text-white/65">
-                    Playground: desktop Ctrl/Cmd-click Link X. Mobile: long-press it, open outside, then come back.
-                  </p>
+                  <div className="rounded-xl border border-marine/15 bg-marine/10 p-3 text-[11px] font-bold leading-5 text-ink/62 dark:border-sky-300/20 dark:bg-sky-300/10 dark:text-white/65">
+                    <p>Playground: open Twitter auth outside, then come back.</p>
+                    {xAuthUrl ? (
+                      <a
+                        href={xAuthUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-ink px-3 py-2 text-xs font-black text-white transition hover:bg-ink/90 dark:bg-white dark:text-ink"
+                      >
+                        Open Twitter login
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    ) : (
+                      <span className="mt-2 inline-flex w-full items-center justify-center rounded-lg border border-ink/10 px-3 py-2 text-xs font-black text-ink/45 dark:border-white/10 dark:text-white/45">
+                        Preparing Twitter login...
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
