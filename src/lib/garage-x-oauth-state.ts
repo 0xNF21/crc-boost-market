@@ -5,6 +5,7 @@ export type PendingXOAuth = {
   codeVerifier: string;
   address: string;
   returnTo: string;
+  returnAfterAuth?: "playground";
 };
 
 type SignedXOAuthPayload = {
@@ -13,6 +14,7 @@ type SignedXOAuthPayload = {
   codeVerifier: string;
   address: string;
   returnTo: string;
+  returnAfterAuth?: "playground";
   exp: number;
 };
 
@@ -45,6 +47,7 @@ export function createSignedXOAuthState(params: {
   codeVerifier: string;
   address: string;
   returnTo: string;
+  returnAfterAuth?: "playground";
   maxAgeSeconds?: number;
 }) {
   const payload: SignedXOAuthPayload = {
@@ -53,6 +56,7 @@ export function createSignedXOAuthState(params: {
     codeVerifier: params.codeVerifier,
     address: params.address.toLowerCase(),
     returnTo: params.returnTo,
+    returnAfterAuth: params.returnAfterAuth,
     exp: Math.floor(Date.now() / 1000) + (params.maxAgeSeconds ?? 10 * 60),
   };
   const encoded = base64url(JSON.stringify(payload));
@@ -82,6 +86,7 @@ export function readSignedXOAuthState(state: string | null): PendingXOAuth | nul
       codeVerifier: payload.codeVerifier,
       address: payload.address.toLowerCase(),
       returnTo: payload.returnTo.startsWith("/") && !payload.returnTo.startsWith("//") ? payload.returnTo : "/garage",
+      returnAfterAuth: payload.returnAfterAuth === "playground" ? "playground" : undefined,
     };
   } catch {
     return null;

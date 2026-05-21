@@ -51,10 +51,12 @@ export async function GET(req: NextRequest) {
   const codeVerifier = base64url(randomBytes(48));
   const codeChallenge = base64url(createHash("sha256").update(codeVerifier).digest());
   const returnTo = getReturnTo(req);
+  const returnAfterAuth = req.nextUrl.searchParams.get("returnAfterAuth") === "playground" ? "playground" : undefined;
   const state = createSignedXOAuthState({
     codeVerifier,
     address: addressOr401,
     returnTo,
+    returnAfterAuth,
   });
 
   const authUrl = new URL("https://x.com/i/oauth2/authorize");
@@ -75,6 +77,7 @@ export async function GET(req: NextRequest) {
         codeVerifier,
         address: addressOr401.toLowerCase(),
         returnTo,
+        returnAfterAuth,
       }),
     ).toString("base64url"),
     httpOnly: true,

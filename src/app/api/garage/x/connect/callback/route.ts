@@ -9,12 +9,14 @@ import { readSignedXOAuthState } from "@/lib/garage-x-oauth-state";
 import { enforceRateLimit } from "@/lib/rate-limit";
 
 const OAUTH_COOKIE = "nfs_x_oauth";
+const CIRCLES_PLAYGROUND_URL = "https://circles.gnosis.io/playground";
 
 type PendingOAuth = {
   state: string;
   codeVerifier: string;
   address: string;
   returnTo: string;
+  returnAfterAuth?: "playground";
 };
 
 type XTokenResponse = {
@@ -85,6 +87,16 @@ function redirectTo(req: NextRequest, path: string, status: string) {
   const res = NextResponse.redirect(url);
   clearCookie(res);
   return res;
+}
+
+function redirectAfterOAuth(req: NextRequest, pending: PendingOAuth, status: string) {
+  if (status === "linked" && pending.returnAfterAuth === "playground") {
+    const res = NextResponse.redirect(CIRCLES_PLAYGROUND_URL);
+    clearCookie(res);
+    return res;
+  }
+
+  return redirectTo(req, pending.returnTo, status);
 }
 
 async function exchangeCode(req: NextRequest, code: string, codeVerifier: string): Promise<string> {
@@ -251,7 +263,7 @@ export async function GET(req: NextRequest) {
         },
       });
 
-    return redirectTo(req, pending.returnTo, "linked");
+    return redirectAfterOAuth(req, pending, "linked");
   } catch (error: any) {
     const status = classifyOAuthError(error);
     console.error("[garage/x/connect/callback] error:", { status, ...describeOAuthError(error) });

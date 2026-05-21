@@ -535,7 +535,7 @@ export default function CirclesGaragePage() {
       }
 
       try {
-        const res = await fetch(`${X_CONNECT_START_URL}&format=json`, {
+        const res = await fetch(`${X_CONNECT_START_URL}&format=json&returnAfterAuth=playground`, {
           cache: "no-store",
           credentials: "include",
           headers: clientAuthHeaders(),
