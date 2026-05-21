@@ -1150,7 +1150,72 @@ export default function CirclesGaragePage() {
       </div>
 
       <section className="garage-header sticky top-0 z-30 border-b border-ink/10 bg-sand/90 pt-14 backdrop-blur-xl dark:border-white/10 dark:bg-[#0a0a0a]/90 sm:pt-0">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mx-auto grid max-w-7xl gap-3 px-4 py-3 sm:grid-cols-[minmax(220px,1fr)_auto_minmax(220px,1fr)] sm:items-center">
+          <div className="relative min-w-0 justify-self-start">
+            <div className="rounded-2xl border border-[#39363a] bg-[#242329] p-1.5 text-white shadow-[0_18px_42px_-34px_rgba(0,0,0,0.72)] dark:border-white/10">
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setMarketStatusOpen((open) => !open)}
+                  aria-expanded={marketStatusOpen}
+                  className="flex min-w-0 items-center gap-2 rounded-xl px-2 py-1.5 text-left transition hover:bg-white/10"
+                >
+                  <Activity className="h-4 w-4 shrink-0 text-white/65" />
+                  <span className="min-w-0">
+                    <span className="block text-[10px] font-black uppercase tracking-[0.16em] text-white/45">
+                      Market
+                    </span>
+                    <span className="block max-w-[130px] truncate text-[11px] font-black text-white/72 sm:max-w-[180px]">
+                      {formatNumber(status.global.claims)} claims - {formatNumber(status.global.xReads)} reads
+                    </span>
+                  </span>
+                  <ChevronDown className={`h-4 w-4 shrink-0 text-white/55 transition ${marketStatusOpen ? "rotate-180" : ""}`} />
+                </button>
+                <span className="rounded-xl border border-white/10 bg-white/10 px-2.5 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/60">
+                  {isMiniApp ? "Mini" : "Web"}
+                </span>
+                <button
+                  type="button"
+                  onClick={loadData}
+                  className="inline-flex h-8 items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/10 px-2.5 text-[10px] font-black uppercase tracking-[0.12em] text-white/70 transition hover:bg-white/20"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${loadingData ? "animate-spin" : ""}`} />
+                  <span className="hidden sm:inline">Sync</span>
+                </button>
+              </div>
+
+              {marketStatusOpen && (
+                <div className="absolute left-0 top-[calc(100%+0.5rem)] z-50 w-[min(360px,calc(100vw-2rem))] rounded-lg border border-[#39363a] bg-[#242329] p-4 text-white shadow-[0_24px_70px_-34px_rgba(0,0,0,0.72)] dark:border-white/10">
+                  <div className="grid gap-3">
+                    <StatusLine icon={BadgeCheck} label="Verified claims" value={formatNumber(status.global.claims)} />
+                    <StatusLine icon={Wallet} label="Wallets paid" value={formatNumber(status.global.wallets)} />
+                    <StatusLine icon={ShieldCheck} label="X accounts" value={formatNumber(status.global.xAccounts)} />
+                    <StatusLine icon={CircleDollarSign} label="CRC loop" value="funded + paid" />
+                  </div>
+                  <div className="mt-5 grid gap-2 text-xs font-bold text-white/58">
+                    <p className="flex items-center justify-between gap-3">
+                      <span>X OAuth</span>
+                      <span className={status.xOAuthConfigured ? "text-emerald-300" : "text-citrus"}>
+                        {status.xOAuthConfigured ? "ready" : "missing"}
+                      </span>
+                    </p>
+                    <p className="flex items-center justify-between gap-3">
+                      <span>X verification API</span>
+                      <span className={status.xApiConfigured ? "text-emerald-300" : "text-citrus"}>
+                        {status.xApiConfigured ? "ready" : "missing"}
+                      </span>
+                    </p>
+                    <p className="flex items-center justify-between gap-3">
+                      <span>Settlement</span>
+                      <span className="text-emerald-300">
+                        {formatDurationShort(status.settings.payoutDelaySeconds)}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
           <Link href="/" className="flex items-center gap-3.5">
             <Image
               src="/crc-boost-icon.png"
@@ -1164,6 +1229,7 @@ export default function CirclesGaragePage() {
               <p className="text-xs font-bold text-ink/50 dark:text-white/55">by NF-Society</p>
             </div>
           </Link>
+          <div aria-hidden="true" className="hidden sm:block" />
         </div>
       </section>
 
@@ -1440,7 +1506,7 @@ export default function CirclesGaragePage() {
             />
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
+          <div className="grid gap-6">
           <div className="grid gap-6">
             {loadingData && activeCampaigns.length === 0 ? (
               <div className="rounded-lg border border-ink/10 bg-[#fbfaf6] p-10 text-center shadow-sm dark:border-white/10 dark:bg-white/5">
@@ -1502,71 +1568,6 @@ export default function CirclesGaragePage() {
             )}
           </div>
 
-        <aside className="space-y-6 lg:self-start">
-          <div className="rounded-lg border border-[#39363a] bg-[#242329] p-4 text-white shadow-[0_18px_42px_-34px_rgba(0,0,0,0.72)] dark:border-white/10">
-            <div className="flex items-start gap-3">
-              <button
-                type="button"
-                onClick={() => setMarketStatusOpen((open) => !open)}
-                aria-expanded={marketStatusOpen}
-                className="flex min-w-0 flex-1 items-start justify-between gap-3 text-left"
-              >
-                <div className="min-w-0">
-                  <p className="text-xs font-black uppercase tracking-[0.16em] text-white/45">
-                    Market status
-                  </p>
-                  <p className="mt-1 truncate text-xs font-bold text-white/58">
-                    {formatNumber(status.global.claims)} claims - {formatNumber(status.global.wallets)} wallets - {formatNumber(status.global.xReads)} X reads
-                  </p>
-                </div>
-                <ChevronDown className={`mt-1 h-4 w-4 shrink-0 text-white/55 transition ${marketStatusOpen ? "rotate-180" : ""}`} />
-              </button>
-              <div className="flex shrink-0 items-center gap-2">
-                <span className="rounded-md border border-white/10 bg-white/10 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-white/60">
-                  {isMiniApp ? "Mini" : "Web"}
-                </span>
-                <button
-                  type="button"
-                  onClick={loadData}
-                  className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md border border-white/10 bg-white/10 px-2.5 text-[10px] font-black uppercase tracking-[0.12em] text-white/70 transition hover:bg-white/20"
-                >
-                  <RefreshCw className={`h-3.5 w-3.5 ${loadingData ? "animate-spin" : ""}`} />
-                  Sync
-                </button>
-              </div>
-            </div>
-            {marketStatusOpen && (
-              <div className="mt-4 border-t border-white/10 pt-4">
-                <div className="grid gap-3">
-                  <StatusLine icon={BadgeCheck} label="Verified claims" value={formatNumber(status.global.claims)} />
-                  <StatusLine icon={Wallet} label="Wallets paid" value={formatNumber(status.global.wallets)} />
-                  <StatusLine icon={ShieldCheck} label="X accounts" value={formatNumber(status.global.xAccounts)} />
-                  <StatusLine icon={CircleDollarSign} label="CRC loop" value="funded + paid" />
-                </div>
-                <div className="mt-5 grid gap-2 text-xs font-bold text-white/58">
-                  <p className="flex items-center justify-between gap-3">
-                    <span>X OAuth</span>
-                    <span className={status.xOAuthConfigured ? "text-emerald-300" : "text-citrus"}>
-                      {status.xOAuthConfigured ? "ready" : "missing"}
-                    </span>
-                  </p>
-                  <p className="flex items-center justify-between gap-3">
-                    <span>X verification API</span>
-                    <span className={status.xApiConfigured ? "text-emerald-300" : "text-citrus"}>
-                      {status.xApiConfigured ? "ready" : "missing"}
-                    </span>
-                  </p>
-                  <p className="flex items-center justify-between gap-3">
-                    <span>Settlement</span>
-                    <span className="text-emerald-300">
-                      {formatDurationShort(status.settings.payoutDelaySeconds)}
-                    </span>
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        </aside>
       </div>
             </div>
           )}
