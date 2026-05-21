@@ -205,16 +205,23 @@ export function getGarageCampaignFundingRecipient(): string {
   ).toLowerCase();
 }
 
-export function calculateGarageCampaignFunding(rewardCrc: number, maxClaims: number) {
+export function calculateGarageCampaignFunding(rewardCrc: number, maxClaims: number, feeBps = getGarageCampaignFeeBps()) {
   const rewardPoolCrc = roundCrc(rewardCrc * maxClaims);
-  const feeBps = getGarageCampaignFeeBps();
-  const platformFeeCrc = roundCrc((rewardPoolCrc * feeBps) / 10_000);
+  const normalizedFeeBps = Number.isFinite(feeBps) && feeBps >= 0 ? Math.floor(feeBps) : getGarageCampaignFeeBps();
+  const platformFeeCrc = roundCrc((rewardPoolCrc * normalizedFeeBps) / 10_000);
   return {
     rewardPoolCrc,
     platformFeeCrc,
     totalCrc: roundCrc(rewardPoolCrc + platformFeeCrc),
-    feeBps,
+    feeBps: normalizedFeeBps,
   };
+}
+
+function campaignFeeBpsFromStoredAmounts(campaign: Pick<GarageXCampaign, "budgetCrc" | "platformFeeCrc">) {
+  const rewardPoolCrc = Number(campaign.budgetCrc || 0);
+  const platformFeeCrc = Number(campaign.platformFeeCrc || 0);
+  if (rewardPoolCrc <= 0 || platformFeeCrc < 0) return getGarageCampaignFeeBps();
+  return Math.round((platformFeeCrc * 10_000) / rewardPoolCrc);
 }
 
 export function getGarageCampaignFundingPayment(campaign: Pick<
@@ -237,7 +244,7 @@ export function getGarageCampaignFundingPayment(campaign: Pick<
     amountCrc,
     rewardPoolCrc,
     platformFeeCrc,
-    feeBps: getGarageCampaignFeeBps(),
+    feeBps: campaignFeeBpsFromStoredAmounts(campaign),
     gameData,
     paymentLink: generateGamePaymentLink(
       recipientAddress,

@@ -41,14 +41,14 @@ Pour chaque brique, garder un mini journal de décision :
 
 ## Suivi D'avancement
 
-Prochaine étape actuelle : `2. Badges publics profil`.
+Prochaine étape actuelle : `3. Validation des fees créateur dynamiques`.
 
 | # | Brique | Statut | Critère de validation |
 |---|---|---|---|
 | 1 | Read model trust et backer data | Validé | L'app trouve la source du trust score et la source direct/indirect/sans backer, cache les deux par wallet, et les affiche dans une surface simple interne/debug. |
-| 2 | Badges publics profil | À faire | Le profil, le leaderboard et les zones créateur affichent les badges trust/backer sans punir visuellement les nouveaux users. |
-| 3 | Fees créateur dynamiques | À faire | La fee de création change selon le trust score et le backer status du créateur. |
-| 4 | Preview paiement créateur | À faire | Le créateur voit reward pool, fee NF Society, raison du discount/premium, et total à payer avant paiement. |
+| 2 | Badges publics profil | À tester | Le profil, le leaderboard et les zones créateur affichent les badges trust/backer sans punir visuellement les nouveaux users. |
+| 3 | Fees créateur dynamiques | À tester | La fee de création change selon le trust score et le backer status du créateur. |
+| 4 | Preview paiement créateur | À tester | Le créateur voit reward pool, fee NF Society, raison du discount/premium, et total à payer avant paiement. |
 | 5 | Règles de settlement | À faire | La durée de settlement est stockée et affichée selon le tier qualité du créateur. |
 | 6 | Ranking des campagnes | À faire | Les boosts live utilisent le trust/backer du créateur comme un facteur de ranking. |
 | 7 | Tiers de qualité referral | À faire | Les rewards referral peuvent varier selon la qualité du wallet invité tout en gardant les milestones actuels. |
@@ -65,6 +65,16 @@ Journal de décision pour la brique 1 :
 - Implémenté : cache DB, endpoint de refresh, et carte debug dans le profil avec refresh manuel.
 - Testé : la branche Neon production contient `garage_trust_profiles`; le refresh wallet stocke le trust `78`, le niveau `HIGH`, le statut direct backer, et mutual trust `108`.
 - Statut final : `Validé`.
+
+Journal de décision pour les briques 2, 3 et 4 :
+
+- Décidé : les badges publics utilisent seulement le profil trust en cache ; le leaderboard ne doit pas appeler Circles en live pour chaque ligne.
+- Décidé : les fees créateur sont progressives sur deux axes : direct/indirect/sans backer d'abord, puis trust score high/medium/low dans chaque statut.
+- Implémenté : badges trust/backer compacts dans le profil et le leaderboard.
+- Implémenté : matrice de fee commune frontend/backend : direct high `1%`, direct medium `1.25%`, direct low `1.5%`, indirect high `1.75%`, indirect medium `2%`, indirect low `2.25%`, sans backer high `2.5%`, sans backer medium `2.75%`, sans backer low `3%`.
+- Implémenté : la preview paiement créateur affiche la fee NF Society calculée, le tier, la raison, la reward pool et le total à payer.
+- À tester : créer une campagne avec le wallet direct/high actuel et confirmer que preview/paiement utilisent `1%` de fee.
+- Statut actuel : `À tester`.
 
 ## Intégration Du Trust Score
 

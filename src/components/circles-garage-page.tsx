@@ -32,6 +32,7 @@ import { useAuthSession } from "@/components/auth-provider";
 import { LanguageSwitcher } from "@/components/language-provider";
 import { useMiniApp } from "@/components/miniapp-provider";
 import { clientAuthHeaders } from "@/lib/client-auth-token";
+import { GARAGE_CREATOR_FEE_GRID, getGarageCreatorFeeTier } from "@/lib/garage-fees";
 
 type LinkedXAccount = {
   xUserId: string;
@@ -548,14 +549,19 @@ export default function CirclesGaragePage() {
     return `${origin}/garage?ref=${encodeURIComponent(refCode)}`;
   }, [myProfile?.name, origin, profileAddress]);
 
+  const creatorFeeTier = useMemo(
+    () => getGarageCreatorFeeTier(trustProfile, status.settings.campaignFeeBps),
+    [status.settings.campaignFeeBps, trustProfile],
+  );
+
   const createCost = useMemo(
     () =>
       campaignFundingPreview({
         rewardCrc: createForm.rewardCrc,
         maxClaims: createForm.maxClaims,
-        feeBps: status.settings.campaignFeeBps,
+        feeBps: creatorFeeTier.feeBps,
       }),
-    [createForm.maxClaims, createForm.rewardCrc, status.settings.campaignFeeBps],
+    [createForm.maxClaims, createForm.rewardCrc, creatorFeeTier.feeBps],
   );
 
   const createTweet = useMemo(() => parseXPostInput(createForm.tweetUrl), [createForm.tweetUrl]);
@@ -2049,8 +2055,38 @@ export default function CirclesGaragePage() {
                   </p>
                   <p className="mt-1 text-sm font-bold leading-6 text-ink/62 dark:text-white/68">
                     You fund the user reward pool plus a{" "}
-                    {formatPercentFromBps(status.settings.campaignFeeBps)} NF Society fee. The boost goes live only after the CRC payment is detected.
+                    {formatPercentFromBps(creatorFeeTier.feeBps)} NF Society fee. The boost goes live only after the CRC payment is detected.
                   </p>
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px] font-black">
+                    {creatorFeeTier.backerStatus !== "unknown" ? (
+                      <BackerStatusBadge status={creatorFeeTier.backerStatus} size="compact" />
+                    ) : null}
+                    <span className="rounded-full bg-white/70 px-3 py-1 uppercase text-citrus dark:bg-black/20">
+                      {creatorFeeTier.label}
+                    </span>
+                    <span className="rounded-full bg-white/70 px-3 py-1 uppercase text-citrus dark:bg-black/20">
+                      {formatPercentFromBps(creatorFeeTier.feeBps)} fee
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs font-bold leading-5 text-ink/50 dark:text-white/50">
+                    {creatorFeeTier.reason}
+                  </p>
+                  <div className="mt-4 overflow-hidden rounded-md border border-citrus/20 bg-white/55 text-[10px] font-black uppercase tracking-[0.1em] text-ink/58 dark:border-citrus/25 dark:bg-black/20 dark:text-white/62">
+                    <div className="grid grid-cols-4 border-b border-citrus/15 bg-citrus/10">
+                      <span className="px-3 py-2">Status</span>
+                      <span className="px-3 py-2 text-right">70+</span>
+                      <span className="px-3 py-2 text-right">40-69</span>
+                      <span className="px-3 py-2 text-right">&lt;40</span>
+                    </div>
+                    {GARAGE_CREATOR_FEE_GRID.map((row) => (
+                      <div key={row.status} className="grid grid-cols-4 border-b border-citrus/10 last:border-b-0">
+                        <span className="px-3 py-2">{row.label}</span>
+                        <span className="px-3 py-2 text-right">{formatPercentFromBps(row.fees.high)}</span>
+                        <span className="px-3 py-2 text-right">{formatPercentFromBps(row.fees.medium)}</span>
+                        <span className="px-3 py-2 text-right">{formatPercentFromBps(row.fees.low)}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -2165,7 +2201,7 @@ export default function CirclesGaragePage() {
                 <MiniStat label="Reward pool" value={`${formatNumber(createCost.rewardPoolCrc)} CRC`} />
                 <MiniStat
                   label="NF Society fee"
-                  value={`${formatNumber(createCost.platformFeeCrc)} CRC (${formatPercentFromBps(status.settings.campaignFeeBps)})`}
+                  value={`${formatNumber(createCost.platformFeeCrc)} CRC (${formatPercentFromBps(creatorFeeTier.feeBps)})`}
                 />
                 <MiniStat label="Total" value={`${formatNumber(createCost.totalCrc)} CRC`} />
               </div>

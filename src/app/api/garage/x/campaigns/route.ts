@@ -4,11 +4,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { and, count, desc, eq, inArray, ne, or } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { getAuthenticatedAddress, requireAuthenticatedAddress } from "@/lib/auth/session";
-import { garageXCampaigns, garageXClaims } from "@/lib/db/schema";
+import { garageTrustProfiles, garageXCampaigns, garageXClaims } from "@/lib/db/schema";
 import { enforceRateLimit } from "@/lib/rate-limit";
+import { getGarageCreatorFeeTier } from "@/lib/garage-fees";
 import {
   SEEDED_GARAGE_X_CAMPAIGN,
   calculateGarageCampaignFunding,
+  getGarageCampaignFeeBps,
   campaignToPublic,
   getGarageCampaignFundingPaymentWithQr,
   isGarageAdmin,
@@ -178,7 +180,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "INVALID_BUDGET" }, { status: 400 });
   }
 
-  const funding = calculateGarageCampaignFunding(rewardCrc, maxClaims);
+  const [creatorTrustProfile] = await db
+    .select({
+      trustScore: garageTrustProfiles.trustScore,
+      backerStatus: garageTrustProfiles.backerStatus,
+      directBacker: garageTrustProfiles.directBacker,
+    })
+    .from(garageTrustProfiles)
+    .where(eq(garageTrustProfiles.walletAddress, address))
+    .limit(1);
+  const creatorFeeTier = getGarageCreatorFeeTier(creatorTrustProfile ?? null, getGarageCampaignFeeBps());
+  const funding = calculateGarageCampaignFunding(rewardCrc, maxClaims, creatorFeeTier.feeBps);
   if (funding.rewardPoolCrc <= 0 || funding.rewardPoolCrc > 10_000) {
     return NextResponse.json({ error: "INVALID_BUDGET" }, { status: 400 });
   }

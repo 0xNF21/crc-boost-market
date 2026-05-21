@@ -41,14 +41,14 @@ For every slice, keep a short decision log:
 
 ## Progress Tracker
 
-Current next step: `2. Public profile badges`.
+Current next step: `3. Dynamic creator fees validation`.
 
 | # | Slice | Status | Validation criteria |
 |---|---|---|---|
 | 1 | Trust and backer data read model | Validated | App finds the trust score source and the direct/indirect/no-backer source, caches both per wallet, and shows them in a simple internal/debug surface. |
-| 2 | Public profile badges | Todo | Profile, leaderboard, and creator areas show trust/backer badges without making new users feel punished. |
-| 3 | Dynamic creator fees | Todo | Campaign creation fee changes according to creator trust score and backer status. |
-| 4 | Creator payment preview | Todo | Creator sees reward pool, NF Society fee, discount/premium reason, and total due before paying. |
+| 2 | Public profile badges | To test | Profile, leaderboard, and creator areas show trust/backer badges without making new users feel punished. |
+| 3 | Dynamic creator fees | To test | Campaign creation fee changes according to creator trust score and backer status. |
+| 4 | Creator payment preview | To test | Creator sees reward pool, NF Society fee, discount/premium reason, and total due before paying. |
 | 5 | Settlement duration rules | Todo | Campaign settlement duration is stored and displayed based on creator quality tier. |
 | 6 | Campaign ranking | Todo | Live boosts use creator trust/backer signals as one ranking factor. |
 | 7 | Referral quality tiers | Todo | Referral rewards can vary by invited wallet quality while keeping the current milestones. |
@@ -65,6 +65,16 @@ Decision log for slice 1:
 - Implemented: DB cache, refresh endpoint, and profile debug card with manual refresh.
 - Tested: production Neon branch contains `garage_trust_profiles`; wallet refresh stores trust `78`, level `HIGH`, direct backer status, and mutual trust `108`.
 - Final status: `Validated`.
+
+Decision log for slices 2, 3, and 4:
+
+- Decided: public badges use the cached trust profile only; the leaderboard must not call Circles live for every row.
+- Decided: creator fees are progressive by two axes: direct/indirect/no-backer first, then high/medium/low trust score inside each status.
+- Implemented: compact trust/backer badges on profile and leaderboard surfaces.
+- Implemented: fee matrix in shared frontend/backend code: direct high `1%`, direct medium `1.25%`, direct low `1.5%`, indirect high `1.75%`, indirect medium `2%`, indirect low `2.25%`, no-backer high `2.5%`, no-backer medium `2.75%`, no-backer low `3%`.
+- Implemented: creator payment preview shows the computed NF Society fee, tier label, reason, reward pool, and total due.
+- To test: create a campaign with the current direct/high wallet and confirm preview/payment uses `1%` fee.
+- Current status: `To test`.
 
 ## Trust Score Integration
 
