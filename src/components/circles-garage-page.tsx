@@ -1074,10 +1074,7 @@ export default function CirclesGaragePage() {
           ? "X post link copied and shown inside the card. Open it outside the Playground, complete the action, then come back to verify."
           : "Playground blocks external links and may block copy. The X link is shown inside the card so you can select it manually.",
       );
-      return;
     }
-
-    window.open(campaign.tweetUrl, "_blank", "noopener,noreferrer");
   }
 
   return (
@@ -2738,14 +2735,16 @@ function CampaignCard({
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row">
         {campaign.tweetUrl && (
-          <button
-            type="button"
+          <a
+            href={campaign.tweetUrl}
+            target="_blank"
+            rel="noopener noreferrer"
             onClick={onOpen}
             className="inline-flex items-center justify-center gap-2 rounded-lg border border-ink/15 bg-[#fffdf8] px-4 py-3 text-sm font-black text-ink transition hover:bg-ink/5 dark:border-white/10 dark:bg-white/10 dark:text-white"
           >
-            {isMiniApp ? "Show X link" : "Open on X"}
-            {isMiniApp ? <Copy className="h-4 w-4" /> : <ExternalLink className="h-4 w-4" />}
-          </button>
+            Open on X
+            <ExternalLink className="h-4 w-4" />
+          </a>
         )}
         <button
           type="button"
