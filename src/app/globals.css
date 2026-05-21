@@ -24,37 +24,16 @@
 
 body {
   @apply font-body text-ink dark:text-white;
-  background-image:
-    linear-gradient(180deg, rgba(247, 244, 238, 0.74) 0%, rgba(242, 238, 230, 0.9) 58%, rgba(232, 226, 216, 0.94) 100%),
-    url("/crc-boost-bg-light.png");
-  background-position: center top, 58% top;
-  background-size: auto, cover;
-  background-repeat: no-repeat;
-  background-attachment: fixed;
+  background: #ece6da;
   min-height: 100vh;
 }
 
 .dark body, body.dark {
-  background-image:
-    linear-gradient(180deg, rgba(7, 7, 12, 0.62) 0%, rgba(10, 9, 14, 0.82) 58%, rgba(8, 8, 10, 0.94) 100%),
-    url("/crc-boost-bg-dark.png");
-  background-position: center top, 58% top;
-  background-size: auto, cover;
-  background-repeat: no-repeat;
-  background-attachment: fixed;
+  background: #08080c;
 }
 
 html.dark {
   background: #0a0a0a;
-}
-
-@media (max-width: 768px) {
-  body,
-  .dark body,
-  body.dark {
-    background-position: center top, 62% top;
-    background-attachment: scroll;
-  }
 }
 
 * {
@@ -277,10 +256,13 @@ input, textarea, [contenteditable="true"] {
 .garage-theme {
   max-width: 100vw;
   overflow-x: hidden;
-  background:
-    radial-gradient(circle at 12% 8%, rgba(37, 27, 159, 0.16), transparent 45%),
-    radial-gradient(circle at 88% 12%, rgba(255, 73, 27, 0.15), transparent 46%),
-    linear-gradient(180deg, #eee8df 0%, #e4e7ee 55%, #dce9e4 100%) !important;
+  background-image:
+    linear-gradient(180deg, rgba(247, 244, 238, 0.08) 0%, rgba(242, 238, 230, 0.36) 58%, rgba(232, 226, 216, 0.62) 100%),
+    url("/crc-boost-bg-light.png") !important;
+  background-position: center top, 64% top !important;
+  background-size: auto, cover !important;
+  background-repeat: no-repeat !important;
+  background-attachment: fixed !important;
 }
 
 .garage-theme :where(section, div, article, aside, code, input) {
@@ -288,10 +270,21 @@ input, textarea, [contenteditable="true"] {
 }
 
 .dark .garage-theme {
-  background:
-    radial-gradient(circle at 12% 8%, rgba(37, 27, 159, 0.25), transparent 45%),
-    radial-gradient(circle at 88% 12%, rgba(255, 73, 27, 0.15), transparent 46%),
-    linear-gradient(180deg, #0a0a0a 0%, #111113 55%, #0a0f0e 100%) !important;
+  background-image:
+    linear-gradient(180deg, rgba(7, 7, 12, 0.08) 0%, rgba(10, 9, 14, 0.34) 58%, rgba(8, 8, 10, 0.7) 100%),
+    url("/crc-boost-bg-dark.png") !important;
+  background-position: center top, 64% top !important;
+  background-size: auto, cover !important;
+  background-repeat: no-repeat !important;
+  background-attachment: fixed !important;
+}
+
+@media (max-width: 768px) {
+  .garage-theme,
+  .dark .garage-theme {
+    background-position: center top, 62% top !important;
+    background-attachment: scroll !important;
+  }
 }
 
 .garage-theme > section {
