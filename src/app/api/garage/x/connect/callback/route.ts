@@ -91,7 +91,9 @@ function redirectTo(req: NextRequest, path: string, status: string) {
 
 function redirectAfterOAuth(req: NextRequest, pending: PendingOAuth, status: string) {
   if (status === "linked" && pending.returnAfterAuth === "playground") {
-    const res = NextResponse.redirect(CIRCLES_PLAYGROUND_URL);
+    const playgroundUrl = new URL(CIRCLES_PLAYGROUND_URL);
+    playgroundUrl.searchParams.set("url", `${getAppOrigin(req)}/`);
+    const res = NextResponse.redirect(playgroundUrl);
     clearCookie(res);
     return res;
   }
