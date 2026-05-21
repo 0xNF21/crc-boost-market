@@ -49,7 +49,7 @@ Current next step: `5. Settlement duration rules`.
 | 2 | Public profile badges | Validated | Profile, leaderboard, and creator areas show trust/backer badges without making new users feel punished. |
 | 3 | Dynamic creator fees | Validated | Campaign creation fee changes according to creator trust score and backer status. |
 | 4 | Creator payment preview | Validated | Creator sees reward pool, NF Society fee, discount/premium reason, and total due before paying. |
-| 5 | Settlement duration rules | Todo | Campaign settlement duration is stored and displayed based on creator quality tier. |
+| 5 | Settlement duration rules | To test | Claim settlement duration is set per claimant based on the wallet trust score and backer status. |
 | 6 | Campaign ranking | Todo | Live boosts use creator trust/backer signals as one ranking factor. |
 | 7 | Referral quality tiers | Todo | Referral rewards can vary by invited wallet quality while keeping the current milestones. |
 | 8 | Campaign quality report | Todo | Creator dashboard explains claimant quality, settlement success, CRC spent, and X reads used. |
@@ -75,6 +75,15 @@ Decision log for slices 2, 3, and 4:
 - Implemented: creator payment preview shows the computed NF Society fee, tier label, reason, reward pool, and total due.
 - Tested: current direct/high wallet showed `1%` in the creator preview; a 10 CRC reward pool created a draft with `0.1 CRC` NF Society fee and `10.1 CRC` total due.
 - Final status: `Validated`.
+
+Decision log for slice 5:
+
+- Decided: settlement duration belongs to the claimant, not the creator, because the risk is whether the claimant removes the X action before payout.
+- Implemented: shared claimant settlement matrix: direct high `2 min`, direct medium `3 min`, direct low `4 min`, indirect high `5 min`, indirect medium `6 min`, indirect low `7 min`, no-backer high `8 min`, no-backer medium `9 min`, no-backer low `10 min`.
+- Implemented: verification endpoint sets each claim's `payoutAvailableAt` from the claiming wallet trust/backer profile.
+- Implemented: boost UI shows the current user's settlement window, while creator preview says settlement is user-based.
+- To test: claim a campaign with the current direct/high wallet and confirm the first settlement window is 2 minutes.
+- Current status: `To test`.
 
 ## Trust Score Integration
 
@@ -142,20 +151,25 @@ This makes campaign creation feel tied to the Circles graph, not like a normal f
 
 ### 2. Settlement Time By Trust Score
 
-Settlement delay can also depend on trust score.
+Settlement delay should depend on the user who claims, not the campaign creator.
 
 Proposed first tiers:
 
-- `80-100 trust`: 2 minute settlement
-- `50-79 trust`: 5 minute settlement
-- `20-49 trust`: 10 minute settlement
-- `0-19 trust / no score`: 15 minute settlement
+- Direct backer + high trust: 2 minute settlement
+- Direct backer + medium trust: 3 minute settlement
+- Direct backer + low trust: 4 minute settlement
+- Indirect backer + high trust: 5 minute settlement
+- Indirect backer + medium trust: 6 minute settlement
+- Indirect backer + low trust: 7 minute settlement
+- No backer + high trust: 8 minute settlement
+- No backer + medium trust: 9 minute settlement
+- No backer + low trust: 10 minute settlement
 
-This can apply first to campaign creators, then later to claimants if needed. The safer first version is creator-based: campaigns from higher-trust creators settle faster for everyone.
+The first implementation is claimant-based: once a user verifies an X action, their own cached Circles trust profile determines the re-check window before CRC payout.
 
 UX copy should stay simple:
 
-`Trusted creator: faster CRC settlement.`
+`Your settlement window is based on your Circles trust/backer status.`
 
 ### 3. Campaign Visibility Boost
 
@@ -371,7 +385,7 @@ UX copy should be transparent:
 - Add backer-status fee adjustments.
 - Apply dynamic fee in campaign creation.
 - Show fee explanation in creator payment preview.
-- Add creator-based settlement duration to campaign data.
+- Add claimant-based settlement duration to claim creation.
 
 ### Phase 3: Campaign Ranking And Reports
 

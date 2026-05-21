@@ -32,7 +32,7 @@ import { useAuthSession } from "@/components/auth-provider";
 import { LanguageSwitcher } from "@/components/language-provider";
 import { useMiniApp } from "@/components/miniapp-provider";
 import { clientAuthHeaders } from "@/lib/client-auth-token";
-import { GARAGE_CREATOR_FEE_GRID, getGarageCreatorFeeTier } from "@/lib/garage-fees";
+import { GARAGE_CREATOR_FEE_GRID, getGarageClaimSettlementTier, getGarageCreatorFeeTier } from "@/lib/garage-fees";
 
 type LinkedXAccount = {
   xUserId: string;
@@ -552,6 +552,10 @@ export default function CirclesGaragePage() {
   const creatorFeeTier = useMemo(
     () => getGarageCreatorFeeTier(trustProfile, status.settings.campaignFeeBps),
     [status.settings.campaignFeeBps, trustProfile],
+  );
+  const claimSettlementTier = useMemo(
+    () => getGarageClaimSettlementTier(trustProfile, status.settings.payoutDelaySeconds),
+    [status.settings.payoutDelaySeconds, trustProfile],
   );
 
   const createCost = useMemo(
@@ -1339,7 +1343,7 @@ export default function CirclesGaragePage() {
                     <p className="flex items-center justify-between gap-3">
                       <span>Settlement</span>
                       <span className="text-emerald-300">
-                        {formatDurationShort(status.settings.payoutDelaySeconds)}
+                        {formatDurationShort(claimSettlementTier.delaySeconds)} for you
                       </span>
                     </p>
                   </div>
@@ -1388,7 +1392,7 @@ export default function CirclesGaragePage() {
                   <ProofPill
                     icon={Clock3}
                     label="Settlement"
-                    value={formatDurationShort(status.settings.payoutDelaySeconds)}
+                    value={`${formatDurationShort(claimSettlementTier.delaySeconds)} for you`}
                     tone="neutral"
                   />
                   <ProofPill
@@ -1633,7 +1637,7 @@ export default function CirclesGaragePage() {
               icon={CircleDollarSign}
               step="03"
               title="Receive CRC"
-              detail={`Keep it live for ${formatDurationShort(status.settings.payoutDelaySeconds)}; removed actions do not unlock payout.`}
+              detail={`Your settlement is ${formatDurationShort(claimSettlementTier.delaySeconds)} from your trust/backer status.`}
             />
           </div>
 
@@ -1692,7 +1696,7 @@ export default function CirclesGaragePage() {
                   onVerify={() => verifyCampaign(campaign)}
                   onOpen={() => void openCampaignOnX(campaign)}
                   now={now}
-                  settlementSeconds={status.settings.payoutDelaySeconds}
+                  settlementSeconds={claimSettlementTier.delaySeconds}
                   feedback={campaignFeedback?.campaignId === campaign.id ? campaignFeedback : null}
                 />
               ))
@@ -2244,7 +2248,6 @@ export default function CirclesGaragePage() {
                 rewardCrc={createRewardCrc}
                 maxClaims={createMaxClaims}
                 totalCrc={createCost.totalCrc}
-                settlementSeconds={status.settings.payoutDelaySeconds}
                 ready={createReady}
               />
             </div>
@@ -2471,7 +2474,6 @@ function CreatorCampaignPreview({
   rewardCrc,
   maxClaims,
   totalCrc,
-  settlementSeconds,
   ready,
 }: {
   title: string;
@@ -2481,7 +2483,6 @@ function CreatorCampaignPreview({
   rewardCrc: number;
   maxClaims: number;
   totalCrc: number;
-  settlementSeconds: number;
   ready: boolean;
 }) {
   const safeReward = Number.isFinite(rewardCrc) && rewardCrc > 0 ? rewardCrc : 0;
@@ -2514,7 +2515,7 @@ function CreatorCampaignPreview({
             {formatNumber(safeReward)} CRC
           </span>
           <span className="rounded-md bg-marine/10 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-marine dark:text-sky-300">
-            {formatDurationShort(settlementSeconds)} settlement
+            user-based settlement
           </span>
           <span className="rounded-md bg-ink/5 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-ink/50 dark:bg-white/10 dark:text-white/55">
             {formatNumber(safeClaims)} slots
@@ -3045,7 +3046,7 @@ function CampaignCard({
               {formatNumber(campaign.rewardCrc)} CRC
             </span>
             <span className="rounded-md bg-marine/10 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-marine dark:text-sky-300">
-              {formatDurationShort(settlementSeconds)} settlement
+              {formatDurationShort(settlementSeconds)} for you
             </span>
             <span className="rounded-md bg-ink/5 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-ink/50 dark:bg-white/10 dark:text-white/55">
               {formatNumber(campaign.stats.remainingClaims)} left

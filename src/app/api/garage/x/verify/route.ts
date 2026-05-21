@@ -6,7 +6,9 @@ import { db } from "@/lib/db";
 import { requireAuthenticatedAddress } from "@/lib/auth/session";
 import { garageXAccounts, garageXCampaigns, garageXClaims, garageXVerificationCache } from "@/lib/db/schema";
 import { enforceRateLimit } from "@/lib/rate-limit";
+import { getGarageClaimSettlementTier } from "@/lib/garage-fees";
 import { isGarageReferralRewardStatusPaid, processGarageReferralRewardsForWallet } from "@/lib/garage-referral-rewards";
+import { getGarageTrustProfile } from "@/lib/garage-trust";
 import { getGarageXPayoutDelaySeconds, isXApiConfigured, normalizeXAction, verifyGarageXAction } from "@/lib/garage-x";
 import { executePayout } from "@/lib/payout";
 
@@ -56,8 +58,9 @@ function parseStartedAt(value: unknown) {
   return new Date(Math.max(timestamp - 2 * 60_000, now - 7 * 24 * 60 * 60_000));
 }
 
-function settlementDelayMs() {
-  return getGarageXPayoutDelaySeconds() * 1000;
+async function claimSettlementTier(walletAddress: string) {
+  const trustProfile = await getGarageTrustProfile(walletAddress).catch(() => null);
+  return getGarageClaimSettlementTier(trustProfile, getGarageXPayoutDelaySeconds());
 }
 
 function verificationCacheMs() {
@@ -391,7 +394,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const delayMs = settlementDelayMs();
+    const settlementTier = await claimSettlementTier(walletAddress);
+    const delayMs = settlementTier.delaySeconds * 1000;
     const payoutAvailableAt = delayMs > 0 ? new Date(Date.now() + delayMs) : new Date();
     const inserted = await db
       .insert(garageXClaims)
@@ -438,6 +442,7 @@ export async function POST(req: NextRequest) {
         evidence: verification.evidence,
         checked: verification.checked,
         availableAt: payoutAvailableAt.toISOString(),
+        settlement: settlementTier,
         claim: publicClaim(claim),
       });
     }

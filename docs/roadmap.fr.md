@@ -49,7 +49,7 @@ Prochaine étape actuelle : `5. Règles de settlement`.
 | 2 | Badges publics profil | Validé | Le profil, le leaderboard et les zones créateur affichent les badges trust/backer sans punir visuellement les nouveaux users. |
 | 3 | Fees créateur dynamiques | Validé | La fee de création change selon le trust score et le backer status du créateur. |
 | 4 | Preview paiement créateur | Validé | Le créateur voit reward pool, fee NF Society, raison du discount/premium, et total à payer avant paiement. |
-| 5 | Règles de settlement | À faire | La durée de settlement est stockée et affichée selon le tier qualité du créateur. |
+| 5 | Règles de settlement | À tester | La durée de settlement est fixée par claimant selon le trust score et le backer status du wallet qui claim. |
 | 6 | Ranking des campagnes | À faire | Les boosts live utilisent le trust/backer du créateur comme un facteur de ranking. |
 | 7 | Tiers de qualité referral | À faire | Les rewards referral peuvent varier selon la qualité du wallet invité tout en gardant les milestones actuels. |
 | 8 | Campaign quality report | À faire | Le creator dashboard explique la qualité des claimants, le succès settlement, les CRC dépensés et les X reads utilisés. |
@@ -75,6 +75,15 @@ Journal de décision pour les briques 2, 3 et 4 :
 - Implémenté : la preview paiement créateur affiche la fee NF Society calculée, le tier, la raison, la reward pool et le total à payer.
 - Testé : le wallet direct/high actuel affiche `1%` dans la preview créateur ; une reward pool de 10 CRC crée un draft avec `0.1 CRC` de fee NF Society et `10.1 CRC` de total à payer.
 - Statut final : `Validé`.
+
+Journal de décision pour la brique 5 :
+
+- Décidé : la durée de settlement appartient au claimant, pas au créateur, parce que le risque vient du user qui peut retirer son action X avant payout.
+- Implémenté : matrice claimant commune : direct high `2 min`, direct medium `3 min`, direct low `4 min`, indirect high `5 min`, indirect medium `6 min`, indirect low `7 min`, sans backer high `8 min`, sans backer medium `9 min`, sans backer low `10 min`.
+- Implémenté : l'endpoint de vérification fixe `payoutAvailableAt` selon le profil trust/backer du wallet qui claim.
+- Implémenté : l'UI Boosts affiche la fenêtre de settlement du user actuel, pendant que la preview créateur indique que le settlement est user-based.
+- À tester : claim une campagne avec le wallet direct/high actuel et confirmer que la première fenêtre de settlement est de 2 minutes.
+- Statut actuel : `À tester`.
 
 ## Intégration Du Trust Score
 
@@ -142,20 +151,25 @@ Le flow créateur doit afficher :
 
 ### 2. Temps De Settlement Selon Le Trust Score
 
-Le délai de settlement peut aussi dépendre du trust score.
+Le délai de settlement doit dépendre du user qui claim, pas du créateur de la campagne.
 
 Premiers tiers proposés :
 
-- `80-100 trust` : settlement de 2 minutes
-- `50-79 trust` : settlement de 5 minutes
-- `20-49 trust` : settlement de 10 minutes
-- `0-19 trust / pas de score` : settlement de 15 minutes
+- Direct backer + high trust : settlement de 2 minutes
+- Direct backer + medium trust : settlement de 3 minutes
+- Direct backer + low trust : settlement de 4 minutes
+- Indirect backer + high trust : settlement de 5 minutes
+- Indirect backer + medium trust : settlement de 6 minutes
+- Indirect backer + low trust : settlement de 7 minutes
+- Sans backer + high trust : settlement de 8 minutes
+- Sans backer + medium trust : settlement de 9 minutes
+- Sans backer + low trust : settlement de 10 minutes
 
-On peut d'abord l'appliquer au créateur de la campagne, puis éventuellement aux claimants plus tard. La version la plus simple et la plus safe : les campagnes créées par des profils à haut trust score settlent plus vite pour tout le monde.
+La première version est claimant-based : quand un user vérifie une action X, son propre profil trust Circles en cache détermine la fenêtre de re-check avant payout CRC.
 
 Le wording UX doit rester simple :
 
-`Créateur trusted : settlement CRC plus rapide.`
+`Ta fenêtre de settlement dépend de ton trust/backer status Circles.`
 
 ### 3. Boost De Visibilité Des Campagnes
 
@@ -371,7 +385,7 @@ Wording UX transparent :
 - Ajouter les ajustements de fees selon le backer status.
 - Appliquer la fee dynamique à la création de campagne.
 - Afficher l'explication de la fee dans la preview de paiement créateur.
-- Ajouter une durée de settlement par campagne selon le créateur.
+- Ajouter une durée de settlement par claim selon le wallet qui claim.
 
 ### Phase 3 : Ranking Et Reports De Campagne
 
