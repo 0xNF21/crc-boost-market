@@ -41,11 +41,11 @@ For every slice, keep a short decision log:
 
 ## Progress Tracker
 
-Current next step: test `1. Trust and backer data read model`, then move to `2. Public profile badges` after validation.
+Current next step: `2. Public profile badges`.
 
 | # | Slice | Status | Validation criteria |
 |---|---|---|---|
-| 1 | Trust and backer data read model | To test | App finds the trust score source and the direct/indirect/no-backer source, caches both per wallet, and shows them in a simple internal/debug surface. |
+| 1 | Trust and backer data read model | Validated | App finds the trust score source and the direct/indirect/no-backer source, caches both per wallet, and shows them in a simple internal/debug surface. |
 | 2 | Public profile badges | Todo | Profile, leaderboard, and creator areas show trust/backer badges without making new users feel punished. |
 | 3 | Dynamic creator fees | Todo | Campaign creation fee changes according to creator trust score and backer status. |
 | 4 | Creator payment preview | Todo | Creator sees reward pool, NF Society fee, discount/premium reason, and total due before paying. |
@@ -63,8 +63,8 @@ Decision log for slice 1:
 - Decided: use Circles RPC indexed tables for both trust score and backer status.
 - Decided: `direct` wins over `indirect`; `none` only means neither direct nor indirect.
 - Implemented: DB cache, refresh endpoint, and profile debug card with manual refresh.
-- To test: run the migration on Neon, connect a wallet, refresh the status, and confirm the card matches Circles data.
-- Final status: `To test`.
+- Tested: production Neon branch contains `garage_trust_profiles`; wallet refresh stores trust `78`, level `HIGH`, direct backer status, and mutual trust `108`.
+- Final status: `Validated`.
 
 ## Trust Score Integration
 

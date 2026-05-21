@@ -41,11 +41,11 @@ Pour chaque brique, garder un mini journal de décision :
 
 ## Suivi D'avancement
 
-Prochaine étape actuelle : tester `1. Read model trust et backer data`, puis passer à `2. Badges publics profil` après validation.
+Prochaine étape actuelle : `2. Badges publics profil`.
 
 | # | Brique | Statut | Critère de validation |
 |---|---|---|---|
-| 1 | Read model trust et backer data | À tester | L'app trouve la source du trust score et la source direct/indirect/sans backer, cache les deux par wallet, et les affiche dans une surface simple interne/debug. |
+| 1 | Read model trust et backer data | Validé | L'app trouve la source du trust score et la source direct/indirect/sans backer, cache les deux par wallet, et les affiche dans une surface simple interne/debug. |
 | 2 | Badges publics profil | À faire | Le profil, le leaderboard et les zones créateur affichent les badges trust/backer sans punir visuellement les nouveaux users. |
 | 3 | Fees créateur dynamiques | À faire | La fee de création change selon le trust score et le backer status du créateur. |
 | 4 | Preview paiement créateur | À faire | Le créateur voit reward pool, fee NF Society, raison du discount/premium, et total à payer avant paiement. |
@@ -63,8 +63,8 @@ Journal de décision pour la brique 1 :
 - Décidé : utiliser les tables indexées du RPC Circles pour le trust score et le backer status.
 - Décidé : `direct` passe avant `indirect`; `none` veut seulement dire ni direct ni indirect.
 - Implémenté : cache DB, endpoint de refresh, et carte debug dans le profil avec refresh manuel.
-- À tester : lancer la migration sur Neon, connecter un wallet, refresh le statut, et confirmer que la carte correspond aux données Circles.
-- Statut final : `À tester`.
+- Testé : la branche Neon production contient `garage_trust_profiles`; le refresh wallet stocke le trust `78`, le niveau `HIGH`, le statut direct backer, et mutual trust `108`.
+- Statut final : `Validé`.
 
 ## Intégration Du Trust Score
 
