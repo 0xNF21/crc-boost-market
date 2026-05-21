@@ -402,15 +402,15 @@ function BackerStatusBadge({ status }: { status: GarageBackerStatus }) {
   const iconSrc = backerStatusIconSrc(status);
 
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 uppercase ${backerStatusTone(status)}`}>
+    <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 uppercase ${backerStatusTone(status)}`}>
       {iconSrc ? (
         <Image
           src={iconSrc}
           alt=""
-          width={24}
-          height={24}
+          width={40}
+          height={40}
           aria-hidden="true"
-          className="h-5 w-5 shrink-0"
+          className="h-10 w-10 shrink-0"
         />
       ) : null}
       {BACKER_STATUS_LABELS[status]}
