@@ -392,6 +392,32 @@ function backerStatusTone(status: GarageBackerStatus) {
   return "bg-ink/8 text-ink/55 dark:bg-white/10 dark:text-white/60";
 }
 
+function backerStatusIconSrc(status: GarageBackerStatus) {
+  if (status === "direct") return "/garage/badges/backer.svg";
+  if (status === "indirect") return "/garage/badges/indirect-backer.svg";
+  return null;
+}
+
+function BackerStatusBadge({ status }: { status: GarageBackerStatus }) {
+  const iconSrc = backerStatusIconSrc(status);
+
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 uppercase ${backerStatusTone(status)}`}>
+      {iconSrc ? (
+        <Image
+          src={iconSrc}
+          alt=""
+          width={18}
+          height={18}
+          aria-hidden="true"
+          className="h-4 w-4 shrink-0"
+        />
+      ) : null}
+      {BACKER_STATUS_LABELS[status]}
+    </span>
+  );
+}
+
 function trustScoreValue(profile: GarageTrustProfile | null) {
   if (!profile || profile.trustScore === null) return "Not found";
   return profile.trustLevel ? `${profile.trustScore} / ${profile.trustLevel}` : String(profile.trustScore);
@@ -1745,9 +1771,7 @@ export default function CirclesGaragePage() {
                         <MiniStat label="Mutual trust" value={formatNumber(trustProfile.mutualCount)} />
                       </div>
                       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-black">
-                        <span className={`rounded-full px-3 py-1 uppercase ${backerStatusTone(trustProfile.backerStatus)}`}>
-                          {BACKER_STATUS_LABELS[trustProfile.backerStatus]}
-                        </span>
+                        <BackerStatusBadge status={trustProfile.backerStatus} />
                         <span className="rounded-full bg-ink/6 px-3 py-1 text-ink/55 dark:bg-white/10 dark:text-white/60">
                           {trustProfile.directBacker
                             ? "Direct backing completed"
