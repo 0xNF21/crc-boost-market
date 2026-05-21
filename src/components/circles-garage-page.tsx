@@ -2045,7 +2045,8 @@ export default function CirclesGaragePage() {
             {creatorFormOpen && (
               <form onSubmit={createCampaign} className="mt-5 border-t border-ink/10 pt-5 dark:border-white/10">
             <div className="rounded-lg border border-citrus/20 bg-citrus/10 p-4 dark:border-citrus/25 dark:bg-citrus/10">
-              <div className="flex items-start gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex min-w-0 items-start gap-3">
                 <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-citrus text-white">
                   <CircleDollarSign className="h-4 w-4" />
                 </span>
@@ -2088,6 +2089,16 @@ export default function CirclesGaragePage() {
                     ))}
                   </div>
                 </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={refreshTrustProfile}
+                  disabled={trustRefreshing}
+                  className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-ink px-3 text-xs font-black text-white transition hover:bg-ink/90 disabled:cursor-wait disabled:opacity-60 dark:bg-white dark:text-ink"
+                >
+                  {trustRefreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  Refresh trust
+                </button>
               </div>
             </div>
             <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(340px,0.9fr)] lg:items-start">
