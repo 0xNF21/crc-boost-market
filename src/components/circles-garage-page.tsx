@@ -708,22 +708,26 @@ export default function CirclesGaragePage() {
     }
   }
 
+  async function showMiniAppXLoginHint() {
+    const xLoginUrl = origin ? `${origin}${X_CONNECT_START_URL}` : X_CONNECT_START_URL;
+    const didCopy = await copyText(xLoginUrl);
+    setNoticeTone("success");
+    setNoticeTxHash(null);
+    setNotice(
+      didCopy
+        ? "X login link copied. Playground: desktop Ctrl/Cmd-click Link X, or mobile long-press it and open outside. Link X once, then come back."
+        : `Playground: desktop Ctrl/Cmd-click Link X, or mobile long-press it and open outside: ${xLoginUrl}`,
+    );
+  }
+
   async function startXConnection() {
-    if (isMiniApp) {
-      const standaloneUrl = origin ? `${origin}/garage` : "/garage";
-      const didCopy = await copyText(standaloneUrl);
-      setNoticeTone("success");
-      setNoticeTxHash(null);
-      setNotice(
-        didCopy
-          ? "Playground blocks X login popups. App link copied: open it outside the Playground, link X once, then come back."
-          : `Playground blocks X login popups. Open this outside the Playground to link X: ${standaloneUrl}`,
-      );
+    if (!isAuthenticated) {
+      openLogin();
       return;
     }
 
-    if (!isAuthenticated) {
-      openLogin();
+    if (isMiniApp) {
+      await showMiniAppXLoginHint();
       return;
     }
 
@@ -1071,8 +1075,8 @@ export default function CirclesGaragePage() {
       setNoticeTxHash(null);
       setNotice(
         didCopy
-          ? "X post link copied and shown inside the card. Open it outside the Playground, complete the action, then come back to verify."
-          : "Playground blocks external links and may block copy. The X link is shown inside the card so you can select it manually.",
+          ? "X post link copied and shown inside the card. Playground: desktop Ctrl/Cmd-click Open on X, or mobile long-press the shown link. Then come back to verify."
+          : "Playground: desktop Ctrl/Cmd-click Open on X, or mobile long-press the shown link. Then come back to verify.",
       );
     }
   }
@@ -1189,9 +1193,16 @@ export default function CirclesGaragePage() {
                 </button>
                 <a
                   href={isAuthenticated ? X_CONNECT_START_URL : "#connect-wallet"}
+                  target={isMiniApp && isAuthenticated ? "_blank" : undefined}
+                  rel={isMiniApp && isAuthenticated ? "noopener noreferrer" : undefined}
                   onClick={(event) => {
-                    event.preventDefault();
-                    void startXConnection();
+                    if (!isAuthenticated || !isMiniApp) {
+                      event.preventDefault();
+                      void startXConnection();
+                      return;
+                    }
+
+                    void showMiniAppXLoginHint();
                   }}
                   className="flex items-center gap-3 rounded-2xl border border-ink/10 bg-white/70 p-3 text-left text-ink transition hover:border-marine/25 hover:bg-white dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/15"
                 >
@@ -1207,6 +1218,11 @@ export default function CirclesGaragePage() {
                     </span>
                   </span>
                 </a>
+                {isMiniApp && !status.linkedAccount && (
+                  <p className="rounded-xl border border-marine/15 bg-marine/10 px-3 py-2 text-[11px] font-bold leading-5 text-ink/62 dark:border-sky-300/20 dark:bg-sky-300/10 dark:text-white/65">
+                    Playground: desktop Ctrl/Cmd-click Link X. Mobile: long-press it, open outside, then come back.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -2757,6 +2773,11 @@ function CampaignCard({
           {!verifying && !campaign.claimedByMe && <ArrowUpRight className="h-4 w-4" />}
         </button>
       </div>
+      {isMiniApp && campaign.tweetUrl && (
+        <p className="mt-2 text-xs font-bold leading-5 text-ink/52 dark:text-white/55">
+          Playground: desktop Ctrl/Cmd-click Open on X. Mobile: tap once to show the link, then long-press it and open outside.
+        </p>
+      )}
       {feedback && (
         <div
           className={`mt-3 flex items-start gap-2 rounded-lg border px-4 py-3 text-sm font-bold ${
@@ -2799,7 +2820,7 @@ function CampaignCard({
             aria-label="X post link"
           />
           <p className="mt-2 text-xs font-bold leading-5 text-ink/52 dark:text-white/55">
-            Select this link, open it outside the Playground, then return here to verify.
+            Desktop: Ctrl/Cmd-click Open on X. Mobile: long-press this link, open it outside the Playground, then return here to verify.
           </p>
         </div>
       )}
