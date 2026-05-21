@@ -407,10 +407,10 @@ function BackerStatusBadge({ status }: { status: GarageBackerStatus }) {
         <Image
           src={iconSrc}
           alt=""
-          width={18}
-          height={18}
+          width={24}
+          height={24}
           aria-hidden="true"
-          className="h-4 w-4 shrink-0"
+          className="h-5 w-5 shrink-0"
         />
       ) : null}
       {BACKER_STATUS_LABELS[status]}
