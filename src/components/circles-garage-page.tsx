@@ -55,6 +55,29 @@ type GarageLeaderboardEntry = {
   lastClaimAt: string | null;
 };
 
+type GarageBackerStatus = "direct" | "indirect" | "none" | "unknown";
+
+type GarageTrustProfile = {
+  walletAddress: string;
+  trustScore: number | null;
+  trustLevel: string | null;
+  confidence: number | null;
+  computedAt: string | null;
+  inDegree: number;
+  outDegree: number;
+  mutualCount: number;
+  ageDays: number;
+  backerStatus: GarageBackerStatus;
+  directBacker: boolean;
+  indirectBackerTrustCount: number;
+  indirectBackerAddresses: string[];
+  source: string;
+  errorMessage: string | null;
+  lastFetchedAt: string;
+  expiresAt: string;
+  stale: boolean;
+};
+
 type GarageXStatus = {
   wallet: string | null;
   isAdmin: boolean;
@@ -355,6 +378,25 @@ function claimStatusLabel(status: string) {
   return status.replace(/_/g, " ");
 }
 
+const BACKER_STATUS_LABELS: Record<GarageBackerStatus, string> = {
+  direct: "Direct backer",
+  indirect: "Indirect backer",
+  none: "No backer link",
+  unknown: "Unknown",
+};
+
+function backerStatusTone(status: GarageBackerStatus) {
+  if (status === "direct") return "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300";
+  if (status === "indirect") return "bg-marine/10 text-marine dark:text-sky-300";
+  if (status === "none") return "bg-citrus/10 text-citrus";
+  return "bg-ink/8 text-ink/55 dark:bg-white/10 dark:text-white/60";
+}
+
+function trustScoreValue(profile: GarageTrustProfile | null) {
+  if (!profile || profile.trustScore === null) return "Not found";
+  return profile.trustLevel ? `${profile.trustScore} / ${profile.trustLevel}` : String(profile.trustScore);
+}
+
 function campaignButtonLabel(campaign: GarageXCampaign, verifying: boolean, unavailable: boolean) {
   if (verifying) return "Verifying";
   if (unavailable || campaign.id <= 0) return "Apply migration first";
@@ -410,9 +452,11 @@ export default function CirclesGaragePage() {
   const { isMiniApp, walletAddress: miniAppWalletAddress, sendPayment } = useMiniApp();
   const [status, setStatus] = useState<GarageXStatus>(EMPTY_STATUS);
   const [referrals, setReferrals] = useState<GarageReferralStatus>(EMPTY_REFERRALS);
+  const [trustProfile, setTrustProfile] = useState<GarageTrustProfile | null>(null);
   const [campaigns, setCampaigns] = useState<GarageXCampaign[]>([]);
   const [campaignsUnavailable, setCampaignsUnavailable] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
+  const [trustRefreshing, setTrustRefreshing] = useState(false);
   const [verifyingId, setVerifyingId] = useState<number | null>(null);
   const [fundingPayment, setFundingPayment] = useState<GarageCampaignFundingPayment | null>(null);
   const [fundingAction, setFundingAction] = useState<"pay" | "scan" | "cancel" | null>(null);
@@ -490,17 +534,20 @@ export default function CirclesGaragePage() {
   const loadData = useCallback(async () => {
     setLoadingData(true);
     try {
-      const [statusRes, campaignsRes, referralsRes] = await Promise.all([
+      const [statusRes, campaignsRes, referralsRes, trustRes] = await Promise.all([
         fetch("/api/garage/x/status", { cache: "no-store", credentials: "include", headers: clientAuthHeaders() }),
         fetch("/api/garage/x/campaigns", { cache: "no-store", credentials: "include", headers: clientAuthHeaders() }),
         fetch("/api/garage/referrals", { cache: "no-store", credentials: "include", headers: clientAuthHeaders() }),
+        fetch("/api/garage/trust/status", { cache: "no-store", credentials: "include", headers: clientAuthHeaders() }),
       ]);
       const statusData = await statusRes.json();
       const campaignsData = await campaignsRes.json();
       const referralsData = await referralsRes.json();
+      const trustData = await trustRes.json().catch(() => ({}));
       const visibleCampaigns = Array.isArray(campaignsData?.campaigns) ? campaignsData.campaigns : [];
       setStatus({ ...EMPTY_STATUS, ...statusData });
       setReferrals({ ...EMPTY_REFERRALS, ...referralsData });
+      setTrustProfile(trustData?.trustProfile ?? null);
       setCampaigns(visibleCampaigns);
       const pendingPayment = visibleCampaigns.find(
         (campaign: GarageXCampaign) => campaign.status === "pending_payment" && campaign.fundingPayment,
@@ -516,6 +563,7 @@ export default function CirclesGaragePage() {
     } catch {
       setStatus(EMPTY_STATUS);
       setReferrals(EMPTY_REFERRALS);
+      setTrustProfile(null);
       setCampaigns([]);
       setFundingPayment(null);
       setCampaignsUnavailable(true);
@@ -740,6 +788,33 @@ export default function CirclesGaragePage() {
       setTimeout(() => setCopied(false), 1500);
     } else {
       setCopied(false);
+    }
+  }
+
+  async function refreshTrustProfile() {
+    if (!isAuthenticated) {
+      openLogin();
+      return;
+    }
+
+    setTrustRefreshing(true);
+    try {
+      const res = await fetch("/api/garage/trust/status?refresh=1", {
+        cache: "no-store",
+        credentials: "include",
+        headers: clientAuthHeaders(),
+      });
+      const data = await res.json().catch(() => ({}));
+      setTrustProfile(data?.trustProfile ?? null);
+      setNoticeTone(data?.trustProfile ? "success" : "error");
+      setNoticeTxHash(null);
+      setNotice(data?.trustProfile ? "Circles trust status refreshed." : "Circles trust status unavailable.");
+    } catch {
+      setNoticeTone("error");
+      setNoticeTxHash(null);
+      setNotice("Circles trust status unavailable.");
+    } finally {
+      setTrustRefreshing(false);
     }
   }
 
@@ -1639,6 +1714,60 @@ export default function CirclesGaragePage() {
                   <MiniStat label="Earned" value={`${formatNumber(status.personal.crcEarned)} CRC`} />
                   <MiniStat label="Pending" value={`${formatNumber(status.personal.crcPending)} CRC`} />
                   <MiniStat label="X reads" value={formatNumber(status.personal.xReads)} />
+                </div>
+
+                <div className="mt-5 rounded-lg border border-ink/10 bg-[#f0ede5] p-4 dark:border-white/10 dark:bg-white/5">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-ink/45 dark:text-white/45">
+                        Circles trust
+                      </p>
+                      <h3 className="font-display text-lg font-black">Trust graph status</h3>
+                      <p className="mt-1 text-xs font-bold leading-5 text-ink/52 dark:text-white/55">
+                        Cached from Circles RPC. Refresh when your score or backer status changes.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={refreshTrustProfile}
+                      disabled={trustRefreshing}
+                      className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-ink px-3 text-sm font-black text-white transition hover:bg-ink/90 disabled:cursor-wait disabled:opacity-60 dark:bg-white dark:text-ink"
+                    >
+                      {trustRefreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                      Refresh
+                    </button>
+                  </div>
+
+                  {trustProfile ? (
+                    <>
+                      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                        <MiniStat label="Trust score" value={trustScoreValue(trustProfile)} />
+                        <MiniStat label="Confidence" value={trustProfile.confidence === null ? "Unknown" : `${trustProfile.confidence}%`} />
+                        <MiniStat label="Mutual trust" value={formatNumber(trustProfile.mutualCount)} />
+                      </div>
+                      <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-black">
+                        <span className={`rounded-full px-3 py-1 uppercase ${backerStatusTone(trustProfile.backerStatus)}`}>
+                          {BACKER_STATUS_LABELS[trustProfile.backerStatus]}
+                        </span>
+                        <span className="rounded-full bg-ink/6 px-3 py-1 text-ink/55 dark:bg-white/10 dark:text-white/60">
+                          {trustProfile.directBacker
+                            ? "Direct backing completed"
+                            : `${formatNumber(trustProfile.indirectBackerTrustCount)} direct backer trusts`}
+                        </span>
+                        <span className="rounded-full bg-ink/6 px-3 py-1 text-ink/55 dark:bg-white/10 dark:text-white/60">
+                          {formatNumber(trustProfile.inDegree)} in / {formatNumber(trustProfile.outDegree)} out
+                        </span>
+                      </div>
+                      <p className="mt-3 text-[11px] font-bold text-ink/45 dark:text-white/45">
+                        Last checked {formatDateTime(trustProfile.lastFetchedAt)}
+                        {trustProfile.errorMessage ? ` - ${trustProfile.errorMessage}` : ""}
+                      </p>
+                    </>
+                  ) : (
+                    <div className="mt-4 rounded-md border border-ink/10 bg-[#fbfaf6] p-3 text-sm font-bold text-ink/55 dark:border-white/10 dark:bg-black/20 dark:text-white/58">
+                      Connect and refresh to load your Circles trust score and direct/indirect backer status.
+                    </div>
+                  )}
                 </div>
 
                 <div className="mt-5 space-y-3">

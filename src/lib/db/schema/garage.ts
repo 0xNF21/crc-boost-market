@@ -1,4 +1,4 @@
-import { index, integer, pgTable, real, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, index, integer, jsonb, pgTable, real, serial, text, timestamp, uniqueIndex } from "drizzle-orm/pg-core";
 
 export const garageReferrals = pgTable(
   "garage_referrals",
@@ -182,6 +182,38 @@ export const garageXVerificationCache = pgTable(
   }),
 );
 
+export const garageTrustProfiles = pgTable(
+  "garage_trust_profiles",
+  {
+    id: serial("id").primaryKey(),
+    walletAddress: text("wallet_address").notNull(),
+    trustScore: integer("trust_score"),
+    trustLevel: text("trust_level"),
+    confidence: integer("confidence"),
+    computedAt: timestamp("computed_at"),
+    inDegree: integer("in_degree").default(0).notNull(),
+    outDegree: integer("out_degree").default(0).notNull(),
+    mutualCount: integer("mutual_count").default(0).notNull(),
+    ageDays: integer("age_days").default(0).notNull(),
+    backerStatus: text("backer_status").notNull().default("unknown"),
+    directBacker: boolean("direct_backer").default(false).notNull(),
+    indirectBackerTrustCount: integer("indirect_backer_trust_count").default(0).notNull(),
+    indirectBackerAddresses: jsonb("indirect_backer_addresses").$type<string[]>().default([]).notNull(),
+    source: text("source").notNull().default("circles-rpc"),
+    errorMessage: text("error_message"),
+    lastFetchedAt: timestamp("last_fetched_at").defaultNow().notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    walletUnique: uniqueIndex("garage_trust_profiles_wallet_uidx").on(table.walletAddress),
+    backerStatusIdx: index("garage_trust_profiles_backer_status_idx").on(table.backerStatus),
+    expiresAtIdx: index("garage_trust_profiles_expires_at_idx").on(table.expiresAt),
+    trustScoreIdx: index("garage_trust_profiles_trust_score_idx").on(table.trustScore),
+  }),
+);
+
 export type GarageXAccount = typeof garageXAccounts.$inferSelect;
 export type NewGarageXAccount = typeof garageXAccounts.$inferInsert;
 export type GarageXCampaign = typeof garageXCampaigns.$inferSelect;
@@ -190,3 +222,5 @@ export type GarageXClaim = typeof garageXClaims.$inferSelect;
 export type NewGarageXClaim = typeof garageXClaims.$inferInsert;
 export type GarageXVerificationCache = typeof garageXVerificationCache.$inferSelect;
 export type NewGarageXVerificationCache = typeof garageXVerificationCache.$inferInsert;
+export type GarageTrustProfile = typeof garageTrustProfiles.$inferSelect;
+export type NewGarageTrustProfile = typeof garageTrustProfiles.$inferInsert;
