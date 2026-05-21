@@ -1,5 +1,7 @@
 # CRC Boost Market Roadmap
 
+French version: [`roadmap.fr.md`](roadmap.fr.md).
+
 This roadmap captures the Circles trust graph features we want to keep after the first shipped version. The goal is to make CRC Boost Market more Circles-native: campaign economics, visibility, referrals, and reporting should use Circles trust data instead of treating CRC as a simple payment token.
 
 ## Trust Score Integration

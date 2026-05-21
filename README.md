@@ -84,4 +84,4 @@ The app is production-deployed on Vercel and designed for both standalone browse
 
 ## Roadmap
 
-See [`docs/roadmap.md`](docs/roadmap.md) for the planned Circles trust score features: dynamic creator fees, trust-based settlement, campaign visibility, trust badges, configurable referrals, campaign quality reports, and fee split configuration.
+See [`docs/roadmap.md`](docs/roadmap.md) in English or [`docs/roadmap.fr.md`](docs/roadmap.fr.md) in French for the planned Circles trust score features: dynamic creator fees, trust-based settlement, campaign visibility, trust badges, configurable referrals, campaign quality reports, and fee split configuration.
