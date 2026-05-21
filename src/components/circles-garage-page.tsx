@@ -1740,9 +1740,8 @@ export default function CirclesGaragePage() {
 
                   {trustProfile ? (
                     <>
-                      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
                         <MiniStat label="Trust score" value={trustScoreValue(trustProfile)} />
-                        <MiniStat label="Confidence" value={trustProfile.confidence === null ? "Unknown" : `${trustProfile.confidence}%`} />
                         <MiniStat label="Mutual trust" value={formatNumber(trustProfile.mutualCount)} />
                       </div>
                       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-black">
