@@ -45,6 +45,16 @@ type CirclesProfile = {
   imageUrl?: string | null;
 };
 
+type GarageTrustSummary = {
+  trustScore: number | null;
+  trustLevel: string | null;
+  mutualCount: number;
+  backerStatus: GarageBackerStatus;
+  directBacker: boolean;
+  indirectBackerTrustCount: number;
+  lastFetchedAt: string | null;
+};
+
 type GarageLeaderboardEntry = {
   walletAddress: string;
   xUsername: string | null;
@@ -53,6 +63,7 @@ type GarageLeaderboardEntry = {
   crcPending: number;
   xReads: number;
   lastClaimAt: string | null;
+  trustProfile: GarageTrustSummary | null;
 };
 
 type GarageBackerStatus = "direct" | "indirect" | "none" | "unknown";
@@ -398,8 +409,16 @@ function backerStatusIconSrc(status: GarageBackerStatus) {
   return null;
 }
 
-function BackerStatusBadge({ status }: { status: GarageBackerStatus }) {
+function BackerStatusBadge({
+  status,
+  size = "prominent",
+}: {
+  status: GarageBackerStatus;
+  size?: "compact" | "prominent";
+}) {
   const iconSrc = backerStatusIconSrc(status);
+  const imageSize = size === "prominent" ? 40 : 28;
+  const imageClass = size === "prominent" ? "h-10 w-10" : "h-7 w-7";
 
   return (
     <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 uppercase ${backerStatusTone(status)}`}>
@@ -407,10 +426,10 @@ function BackerStatusBadge({ status }: { status: GarageBackerStatus }) {
         <Image
           src={iconSrc}
           alt=""
-          width={40}
-          height={40}
+          width={imageSize}
+          height={imageSize}
           aria-hidden="true"
-          className="h-10 w-10 shrink-0"
+          className={`${imageClass} shrink-0`}
         />
       ) : null}
       {BACKER_STATUS_LABELS[status]}
@@ -420,6 +439,11 @@ function BackerStatusBadge({ status }: { status: GarageBackerStatus }) {
 
 function trustScoreValue(profile: GarageTrustProfile | null) {
   if (!profile || profile.trustScore === null) return "Not found";
+  return profile.trustLevel ? `${profile.trustScore} / ${profile.trustLevel}` : String(profile.trustScore);
+}
+
+function trustSummaryValue(profile: GarageTrustSummary | null | undefined) {
+  if (!profile || profile.trustScore === null) return null;
   return profile.trustLevel ? `${profile.trustScore} / ${profile.trustLevel}` : String(profile.trustScore);
 }
 
@@ -1682,7 +1706,7 @@ export default function CirclesGaragePage() {
                 </p>
                 <h2 className="mt-1 font-display text-xl font-black">Participation rank</h2>
                 <p className="mt-3 text-sm font-bold leading-6 text-white/58">
-                  Wallets rank by verified missions and CRC earned. Circles profiles show the name and image behind the wallet.
+                  Wallets rank by verified missions and CRC earned. Circles profiles show name, image, trust score and backer status when cached.
                 </p>
                 <div className="mt-5 grid gap-3">
                   <StatusLine icon={Trophy} label="Ranked wallets" value={formatNumber(status.leaderboard.length)} />
@@ -1732,6 +1756,16 @@ export default function CirclesGaragePage() {
                     <p className="mt-0.5 truncate text-xs font-bold text-ink/45 dark:text-white/45">
                       {shortAddress(profileAddress)}
                     </p>
+                    {trustProfile ? (
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-black">
+                        <BackerStatusBadge status={trustProfile.backerStatus} size="compact" />
+                        {trustProfile.trustScore !== null ? (
+                          <span className="rounded-full bg-ink/6 px-3 py-1 uppercase text-ink/55 dark:bg-white/10 dark:text-white/60">
+                            Trust {trustProfile.trustScore}
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
 
@@ -2841,6 +2875,7 @@ function GarageLeaderboard({
             const profile = profiles[entry.walletAddress.toLowerCase()];
             const displayName = profile?.name || (entry.xUsername ? `@${entry.xUsername}` : shortAddress(entry.walletAddress));
             const pendingText = entry.crcPending > 0 ? ` + ${formatNumber(entry.crcPending)} pending` : "";
+            const trustValue = trustSummaryValue(entry.trustProfile);
 
             return (
               <div
@@ -2864,6 +2899,21 @@ function GarageLeaderboard({
                   )}
                   <div className="min-w-0">
                     <p className="truncate font-display text-lg font-black leading-tight">{displayName}</p>
+                    {entry.trustProfile ? (
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-black">
+                        <BackerStatusBadge status={entry.trustProfile.backerStatus} size="compact" />
+                        {trustValue ? (
+                          <span className="rounded-full bg-ink/6 px-3 py-1 uppercase text-ink/55 dark:bg-white/10 dark:text-white/60">
+                            Trust {trustValue}
+                          </span>
+                        ) : null}
+                        {entry.trustProfile.mutualCount > 0 ? (
+                          <span className="rounded-full bg-ink/6 px-3 py-1 uppercase text-ink/55 dark:bg-white/10 dark:text-white/60">
+                            {formatNumber(entry.trustProfile.mutualCount)} mutual
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
                     <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-bold text-ink/45 dark:text-white/45">
                       <span>Circles {shortAddress(entry.walletAddress)}</span>
                       {entry.xUsername && (

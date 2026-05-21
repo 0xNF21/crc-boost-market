@@ -1,10 +1,10 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { and, desc, eq, ne, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { getAuthenticatedAddress } from "@/lib/auth/session";
-import { garageXAccounts, garageXCampaigns, garageXClaims } from "@/lib/db/schema";
+import { garageTrustProfiles, garageXAccounts, garageXCampaigns, garageXClaims } from "@/lib/db/schema";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { getGarageCampaignFeeBps, getGarageXPayoutDelaySeconds, isGarageAdmin, isXApiConfigured, isXOAuthConfigured } from "@/lib/garage-x";
 
@@ -118,6 +118,28 @@ export async function GET(req: NextRequest) {
       )
       .limit(10);
 
+    const leaderboardWallets = leaderboard
+      .map((entry) => entry.walletAddress?.toLowerCase())
+      .filter((wallet): wallet is string => Boolean(wallet));
+    const leaderboardTrustRows = leaderboardWallets.length
+      ? await db
+          .select({
+            walletAddress: garageTrustProfiles.walletAddress,
+            trustScore: garageTrustProfiles.trustScore,
+            trustLevel: garageTrustProfiles.trustLevel,
+            mutualCount: garageTrustProfiles.mutualCount,
+            backerStatus: garageTrustProfiles.backerStatus,
+            directBacker: garageTrustProfiles.directBacker,
+            indirectBackerTrustCount: garageTrustProfiles.indirectBackerTrustCount,
+            lastFetchedAt: garageTrustProfiles.lastFetchedAt,
+          })
+          .from(garageTrustProfiles)
+          .where(inArray(garageTrustProfiles.walletAddress, leaderboardWallets))
+      : [];
+    const trustByWallet = new Map(
+      leaderboardTrustRows.map((row) => [row.walletAddress.toLowerCase(), row]),
+    );
+
     return NextResponse.json({
       wallet: address,
       isAdmin: isGarageAdmin(address),
@@ -163,6 +185,7 @@ export async function GET(req: NextRequest) {
       },
       leaderboard: leaderboard.map((entry) => {
         const lastClaimAt = entry.lastClaimAt ? new Date(entry.lastClaimAt).toISOString() : null;
+        const trustProfile = trustByWallet.get(entry.walletAddress.toLowerCase());
         return {
           walletAddress: entry.walletAddress,
           xUsername: entry.xUsername,
@@ -171,6 +194,17 @@ export async function GET(req: NextRequest) {
           crcPending: Number(entry.crcPending ?? 0),
           xReads: Number(entry.xReads ?? 0),
           lastClaimAt,
+          trustProfile: trustProfile
+            ? {
+                trustScore: trustProfile.trustScore,
+                trustLevel: trustProfile.trustLevel,
+                mutualCount: Number(trustProfile.mutualCount ?? 0),
+                backerStatus: trustProfile.backerStatus,
+                directBacker: trustProfile.directBacker,
+                indirectBackerTrustCount: Number(trustProfile.indirectBackerTrustCount ?? 0),
+                lastFetchedAt: trustProfile.lastFetchedAt.toISOString(),
+              }
+            : null,
         };
       }),
       settings: {
