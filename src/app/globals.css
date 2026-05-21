@@ -293,6 +293,7 @@ input, textarea, [contenteditable="true"] {
 }
 
 .garage-theme .garage-header {
+  z-index: 90;
   box-shadow: 0 16px 42px -38px rgba(37, 27, 159, 0.45);
 }
 

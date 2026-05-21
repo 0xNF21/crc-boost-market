@@ -1125,7 +1125,7 @@ export default function CirclesGaragePage() {
 
   return (
     <main className="garage-theme relative isolate min-h-screen w-full max-w-full overflow-x-hidden pb-16 text-ink dark:text-white">
-      <div className="fixed left-2 right-2 top-3 z-50 flex max-w-[calc(100vw-1rem)] items-center justify-end gap-1.5 sm:left-auto sm:right-5 sm:top-4 sm:gap-2">
+      <div className="fixed left-2 right-2 top-3 z-[100] flex max-w-[calc(100vw-1rem)] items-center justify-end gap-1.5 sm:left-auto sm:right-5 sm:top-4 sm:gap-2">
         <LanguageSwitcher className="h-11 shrink-0 rounded-2xl border border-ink/10 bg-white/80 px-1.5 shadow-[0_18px_55px_-32px_rgba(20,20,24,0.75)] backdrop-blur-xl dark:border-white/10 dark:bg-[#202024]/90 sm:px-2" />
         <button
           type="button"
@@ -1152,32 +1152,32 @@ export default function CirclesGaragePage() {
       <section className="garage-header sticky top-0 z-30 border-b border-ink/10 bg-sand/90 pt-14 backdrop-blur-xl dark:border-white/10 dark:bg-[#0a0a0a]/90 sm:pt-0">
         <div className="mx-auto grid max-w-7xl gap-3 px-4 py-3 sm:grid-cols-[minmax(220px,1fr)_auto_minmax(220px,1fr)] sm:items-center">
           <div className="relative min-w-0 justify-self-start">
-            <div className="rounded-2xl border border-[#39363a] bg-[#242329] p-1.5 text-white shadow-[0_18px_42px_-34px_rgba(0,0,0,0.72)] dark:border-white/10">
+            <div className="rounded-2xl border border-ink/10 bg-[#f0ede5]/95 p-1.5 text-ink shadow-[0_18px_42px_-34px_rgba(37,27,159,0.45)] backdrop-blur-xl dark:border-white/10 dark:bg-[#19171d]/95 dark:text-white dark:shadow-[0_18px_42px_-34px_rgba(0,0,0,0.72)]">
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => setMarketStatusOpen((open) => !open)}
                   aria-expanded={marketStatusOpen}
-                  className="flex min-w-0 items-center gap-2 rounded-xl px-2 py-1.5 text-left transition hover:bg-white/10"
+                  className="flex min-w-0 items-center gap-2 rounded-xl px-2 py-1.5 text-left transition hover:bg-ink/5 dark:hover:bg-white/10"
                 >
-                  <Activity className="h-4 w-4 shrink-0 text-white/65" />
+                  <Activity className="h-4 w-4 shrink-0 text-ink/55 dark:text-white/65" />
                   <span className="min-w-0">
-                    <span className="block text-[10px] font-black uppercase tracking-[0.16em] text-white/45">
+                    <span className="block text-[10px] font-black uppercase tracking-[0.16em] text-ink/45 dark:text-white/45">
                       Market
                     </span>
-                    <span className="block max-w-[130px] truncate text-[11px] font-black text-white/72 sm:max-w-[180px]">
+                    <span className="block max-w-[130px] truncate text-[11px] font-black text-ink/72 dark:text-white/72 sm:max-w-[180px]">
                       {formatNumber(status.global.claims)} claims - {formatNumber(status.global.xReads)} reads
                     </span>
                   </span>
-                  <ChevronDown className={`h-4 w-4 shrink-0 text-white/55 transition ${marketStatusOpen ? "rotate-180" : ""}`} />
+                  <ChevronDown className={`h-4 w-4 shrink-0 text-ink/50 transition dark:text-white/55 ${marketStatusOpen ? "rotate-180" : ""}`} />
                 </button>
-                <span className="rounded-xl border border-white/10 bg-white/10 px-2.5 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-white/60">
+                <span className="rounded-xl border border-ink/10 bg-[#fbfaf6]/70 px-2.5 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-ink/55 dark:border-white/10 dark:bg-white/10 dark:text-white/60">
                   {isMiniApp ? "Mini" : "Web"}
                 </span>
                 <button
                   type="button"
                   onClick={loadData}
-                  className="inline-flex h-8 items-center justify-center gap-1.5 rounded-xl border border-white/10 bg-white/10 px-2.5 text-[10px] font-black uppercase tracking-[0.12em] text-white/70 transition hover:bg-white/20"
+                  className="inline-flex h-8 items-center justify-center gap-1.5 rounded-xl border border-ink/10 bg-[#fbfaf6]/70 px-2.5 text-[10px] font-black uppercase tracking-[0.12em] text-ink/65 transition hover:bg-white dark:border-white/10 dark:bg-white/10 dark:text-white/70 dark:hover:bg-white/20"
                 >
                   <RefreshCw className={`h-3.5 w-3.5 ${loadingData ? "animate-spin" : ""}`} />
                   <span className="hidden sm:inline">Sync</span>
@@ -1185,14 +1185,14 @@ export default function CirclesGaragePage() {
               </div>
 
               {marketStatusOpen && (
-                <div className="absolute left-0 top-[calc(100%+0.5rem)] z-50 w-[min(360px,calc(100vw-2rem))] rounded-lg border border-[#39363a] bg-[#242329] p-4 text-white shadow-[0_24px_70px_-34px_rgba(0,0,0,0.72)] dark:border-white/10">
+                <div className="absolute left-0 top-[calc(100%+0.5rem)] z-[120] w-[min(360px,calc(100vw-2rem))] rounded-xl border border-ink/10 bg-[#f6f1e8]/95 p-4 text-ink shadow-[0_24px_70px_-34px_rgba(37,27,159,0.42)] backdrop-blur-2xl dark:border-white/10 dark:bg-[#19171d]/95 dark:text-white dark:shadow-[0_24px_70px_-34px_rgba(0,0,0,0.72)]">
                   <div className="grid gap-3">
-                    <StatusLine icon={BadgeCheck} label="Verified claims" value={formatNumber(status.global.claims)} />
-                    <StatusLine icon={Wallet} label="Wallets paid" value={formatNumber(status.global.wallets)} />
-                    <StatusLine icon={ShieldCheck} label="X accounts" value={formatNumber(status.global.xAccounts)} />
-                    <StatusLine icon={CircleDollarSign} label="CRC loop" value="funded + paid" />
+                    <MarketStatusLine icon={BadgeCheck} label="Verified claims" value={formatNumber(status.global.claims)} />
+                    <MarketStatusLine icon={Wallet} label="Wallets paid" value={formatNumber(status.global.wallets)} />
+                    <MarketStatusLine icon={ShieldCheck} label="X accounts" value={formatNumber(status.global.xAccounts)} />
+                    <MarketStatusLine icon={CircleDollarSign} label="CRC loop" value="funded + paid" />
                   </div>
-                  <div className="mt-5 grid gap-2 text-xs font-bold text-white/58">
+                  <div className="mt-5 grid gap-2 text-xs font-bold text-ink/55 dark:text-white/58">
                     <p className="flex items-center justify-between gap-3">
                       <span>X OAuth</span>
                       <span className={status.xOAuthConfigured ? "text-emerald-300" : "text-citrus"}>
@@ -3056,6 +3056,28 @@ function StatusLine({
         <span className="text-sm font-bold text-white/68">{label}</span>
       </div>
       <span className="font-display text-xl font-black">{value}</span>
+    </div>
+  );
+}
+
+function MarketStatusLine({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-ink/10 bg-[#fbfaf6]/75 p-3 dark:border-white/10 dark:bg-white/[0.07]">
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-ink/10 bg-[#f0ede5] text-ink/62 dark:border-white/10 dark:bg-white/10 dark:text-white/70">
+          <Icon className="h-4 w-4" />
+        </span>
+        <span className="truncate text-sm font-bold text-ink/68 dark:text-white/68">{label}</span>
+      </div>
+      <span className="shrink-0 text-right font-display text-xl font-black">{value}</span>
     </div>
   );
 }
