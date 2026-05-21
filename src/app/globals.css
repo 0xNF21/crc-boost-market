@@ -24,22 +24,37 @@
 
 body {
   @apply font-body text-ink dark:text-white;
-  background:
-    radial-gradient(circle at 12% 8%, rgba(37, 27, 159, 0.16), transparent 45%),
-    radial-gradient(circle at 88% 12%, rgba(255, 73, 27, 0.18), transparent 46%),
-    linear-gradient(180deg, #f7f4ee 0%, #f1f5f9 55%, #e9f5f2 100%);
+  background-image:
+    linear-gradient(180deg, rgba(247, 244, 238, 0.74) 0%, rgba(242, 238, 230, 0.9) 58%, rgba(232, 226, 216, 0.94) 100%),
+    url("/crc-boost-bg-light.png");
+  background-position: center top, 58% top;
+  background-size: auto, cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
   min-height: 100vh;
 }
 
 .dark body, body.dark {
-  background:
-    radial-gradient(circle at 12% 8%, rgba(37, 27, 159, 0.25), transparent 45%),
-    radial-gradient(circle at 88% 12%, rgba(255, 73, 27, 0.15), transparent 46%),
-    linear-gradient(180deg, #0a0a0a 0%, #111113 55%, #0a0f0e 100%);
+  background-image:
+    linear-gradient(180deg, rgba(7, 7, 12, 0.62) 0%, rgba(10, 9, 14, 0.82) 58%, rgba(8, 8, 10, 0.94) 100%),
+    url("/crc-boost-bg-dark.png");
+  background-position: center top, 58% top;
+  background-size: auto, cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
 }
 
 html.dark {
   background: #0a0a0a;
+}
+
+@media (max-width: 768px) {
+  body,
+  .dark body,
+  body.dark {
+    background-position: center top, 62% top;
+    background-attachment: scroll;
+  }
 }
 
 * {
