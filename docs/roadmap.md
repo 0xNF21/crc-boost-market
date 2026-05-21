@@ -72,7 +72,8 @@ CRC Boost Market should use the Circles trust score indexed data as a product pr
 
 Useful endpoints:
 
-- `circles_query` on `V_TrustScores.Current`: read the current trust score, trust level, confidence, and graph counts for a wallet.
+- `POST /scoring/relative_trustscore` with `target_set_name: all_backers`: read the score that matches the Circles app display.
+- `circles_query` on `V_TrustScores.Current`: read trust level, confidence, and graph counts for a wallet.
 - `circles_query` on `CrcV2.CirclesBackingCompleted`: detect direct backers.
 - `circles_query` on `V_CrcV2.TrustRelations`: detect incoming trusters, then check which of those trusters are direct backers to infer indirect backer status.
 - The external advanced analytics endpoints may be useful later for separate moderation signals, but they are not part of the first shipped trust/backer read model.

@@ -50,7 +50,16 @@ type TrustScoreRow = {
   age_days?: number | string | null;
 };
 
+type RelativeTrustScoreResult = {
+  address?: string;
+  relative_score?: number | string | null;
+  targets_reached?: number | string | null;
+  total_targets?: number | string | null;
+  penetration_rate?: number | string | null;
+};
+
 const CIRCLES_RPC_URL = process.env.CIRCLES_RPC_URL || process.env.NEXT_PUBLIC_CIRCLES_RPC_URL || "https://rpc.aboutcircles.com/";
+const TRUST_SCORE_API_URL = process.env.GARAGE_TRUST_SCORE_API_URL || "https://squid-app-3gxnl.ondigitalocean.app/aboutcircles-advanced-analytics2";
 const CACHE_SECONDS = Math.max(60, Number(process.env.GARAGE_TRUST_CACHE_SECONDS ?? 6 * 60 * 60));
 const ERROR_CACHE_SECONDS = Math.max(30, Number(process.env.GARAGE_TRUST_ERROR_CACHE_SECONDS ?? 5 * 60));
 const INDIRECT_BACKER_THRESHOLD = Math.max(1, Number(process.env.GARAGE_INDIRECT_BACKER_THRESHOLD ?? 3));
@@ -154,6 +163,33 @@ async function fetchTrustScore(address: string): Promise<TrustScoreRow | null> {
     Limit: 1,
   });
   return (rows[0] as TrustScoreRow | undefined) ?? null;
+}
+
+async function fetchRelativeTrustScore(address: string): Promise<RelativeTrustScoreResult | null> {
+  const response = await fetch(`${TRUST_SCORE_API_URL}/scoring/relative_trustscore`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      avatars: [address],
+      target_set_name: "all_backers",
+      include_details: false,
+    }),
+    signal: AbortSignal.timeout(10_000),
+    cache: "no-store",
+    next: { revalidate: 0 } as any,
+  });
+
+  if (!response.ok) {
+    throw new Error(`relative_trustscore_http_${response.status}`);
+  }
+
+  const payload = await response.json();
+  if (payload?.status && payload.status !== "success") {
+    throw new Error("relative_trustscore_failed");
+  }
+
+  const results = Array.isArray(payload?.results) ? payload.results : [];
+  return (results[0] as RelativeTrustScoreResult | undefined) ?? null;
 }
 
 async function fetchDirectBacker(address: string): Promise<boolean> {
@@ -313,13 +349,17 @@ export async function getGarageTrustProfile(addressValue: string, opts: { force?
 
   const now = new Date();
   try {
-    const [trustScore, backer] = await Promise.all([
+    const [trustScore, relativeTrustScore, backer] = await Promise.all([
       fetchTrustScore(address),
+      fetchRelativeTrustScore(address),
       resolveBackerStatus(address),
     ]);
+    const relativeScore = numberOrNull(relativeTrustScore?.relative_score);
 
     const row = await writeTrustProfile(address, {
-      trustScore: numberOrNull(trustScore?.trust_score),
+      trustScore: relativeScore === null
+        ? numberOrNull(trustScore?.trust_score)
+        : Math.floor(relativeScore),
       trustLevel: typeof trustScore?.trust_level === "string" ? trustScore.trust_level : null,
       confidence: numberOrNull(trustScore?.confidence),
       computedAt: epochSecondsToDate(trustScore?.computed_at),
@@ -331,7 +371,7 @@ export async function getGarageTrustProfile(addressValue: string, opts: { force?
       directBacker: backer.directBacker,
       indirectBackerTrustCount: backer.indirectBackerTrustCount,
       indirectBackerAddresses: backer.indirectBackerAddresses,
-      source: "circles-rpc",
+      source: relativeScore === null ? "circles-rpc" : "relative-trustscore",
       errorMessage: null,
       lastFetchedAt: now,
       expiresAt: new Date(now.getTime() + CACHE_SECONDS * 1000),
