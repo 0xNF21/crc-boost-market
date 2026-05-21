@@ -427,6 +427,7 @@ export default function CirclesGaragePage() {
   const [xAuthUrl, setXAuthUrl] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [garageSection, setGarageSection] = useState<GarageSection>("boosts");
+  const [marketStatusOpen, setMarketStatusOpen] = useState(false);
   const [profileReferralOpen, setProfileReferralOpen] = useState(false);
   const [creatorFormOpen, setCreatorFormOpen] = useState(true);
   const [leaderboardProfiles, setLeaderboardProfiles] = useState<Record<string, CirclesProfile>>({});
@@ -1501,11 +1502,26 @@ export default function CirclesGaragePage() {
             )}
           </div>
 
-        <aside className="space-y-6">
-          <div className="rounded-lg border border-[#39363a] bg-[#242329] p-6 text-white shadow-[0_18px_42px_-34px_rgba(0,0,0,0.72)] dark:border-white/10">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-white/45">Market status</p>
-              <div className="flex items-center gap-2">
+        <aside className="space-y-6 lg:self-start">
+          <div className="rounded-lg border border-[#39363a] bg-[#242329] p-4 text-white shadow-[0_18px_42px_-34px_rgba(0,0,0,0.72)] dark:border-white/10">
+            <div className="flex items-start gap-3">
+              <button
+                type="button"
+                onClick={() => setMarketStatusOpen((open) => !open)}
+                aria-expanded={marketStatusOpen}
+                className="flex min-w-0 flex-1 items-start justify-between gap-3 text-left"
+              >
+                <div className="min-w-0">
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-white/45">
+                    Market status
+                  </p>
+                  <p className="mt-1 truncate text-xs font-bold text-white/58">
+                    {formatNumber(status.global.claims)} claims - {formatNumber(status.global.wallets)} wallets - {formatNumber(status.global.xReads)} X reads
+                  </p>
+                </div>
+                <ChevronDown className={`mt-1 h-4 w-4 shrink-0 text-white/55 transition ${marketStatusOpen ? "rotate-180" : ""}`} />
+              </button>
+              <div className="flex shrink-0 items-center gap-2">
                 <span className="rounded-md border border-white/10 bg-white/10 px-2.5 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-white/60">
                   {isMiniApp ? "Mini" : "Web"}
                 </span>
@@ -1519,32 +1535,36 @@ export default function CirclesGaragePage() {
                 </button>
               </div>
             </div>
-            <div className="mt-5 grid gap-3">
-              <StatusLine icon={BadgeCheck} label="Verified claims" value={formatNumber(status.global.claims)} />
-              <StatusLine icon={Wallet} label="Wallets paid" value={formatNumber(status.global.wallets)} />
-              <StatusLine icon={ShieldCheck} label="X accounts" value={formatNumber(status.global.xAccounts)} />
-              <StatusLine icon={CircleDollarSign} label="CRC loop" value="funded + paid" />
-            </div>
-            <div className="mt-5 grid gap-2 text-xs font-bold text-white/58">
-              <p className="flex items-center justify-between gap-3">
-                <span>X OAuth</span>
-                <span className={status.xOAuthConfigured ? "text-emerald-300" : "text-citrus"}>
-                  {status.xOAuthConfigured ? "ready" : "missing"}
-                </span>
-              </p>
-              <p className="flex items-center justify-between gap-3">
-                <span>X verification API</span>
-                <span className={status.xApiConfigured ? "text-emerald-300" : "text-citrus"}>
-                  {status.xApiConfigured ? "ready" : "missing"}
-                </span>
-              </p>
-              <p className="flex items-center justify-between gap-3">
-                <span>Settlement</span>
-                <span className="text-emerald-300">
-                  {formatDurationShort(status.settings.payoutDelaySeconds)}
-                </span>
-              </p>
-            </div>
+            {marketStatusOpen && (
+              <div className="mt-4 border-t border-white/10 pt-4">
+                <div className="grid gap-3">
+                  <StatusLine icon={BadgeCheck} label="Verified claims" value={formatNumber(status.global.claims)} />
+                  <StatusLine icon={Wallet} label="Wallets paid" value={formatNumber(status.global.wallets)} />
+                  <StatusLine icon={ShieldCheck} label="X accounts" value={formatNumber(status.global.xAccounts)} />
+                  <StatusLine icon={CircleDollarSign} label="CRC loop" value="funded + paid" />
+                </div>
+                <div className="mt-5 grid gap-2 text-xs font-bold text-white/58">
+                  <p className="flex items-center justify-between gap-3">
+                    <span>X OAuth</span>
+                    <span className={status.xOAuthConfigured ? "text-emerald-300" : "text-citrus"}>
+                      {status.xOAuthConfigured ? "ready" : "missing"}
+                    </span>
+                  </p>
+                  <p className="flex items-center justify-between gap-3">
+                    <span>X verification API</span>
+                    <span className={status.xApiConfigured ? "text-emerald-300" : "text-citrus"}>
+                      {status.xApiConfigured ? "ready" : "missing"}
+                    </span>
+                  </p>
+                  <p className="flex items-center justify-between gap-3">
+                    <span>Settlement</span>
+                    <span className="text-emerald-300">
+                      {formatDurationShort(status.settings.payoutDelaySeconds)}
+                    </span>
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </aside>
       </div>
