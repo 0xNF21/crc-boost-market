@@ -81,3 +81,7 @@ Main code paths:
 ## Current Notes
 
 The app is production-deployed on Vercel and designed for both standalone browser use and Circles mini-app testing through the Playground. In the Playground, external X popups may be blocked by the host, so the app provides copy/open fallback behavior.
+
+## Roadmap
+
+See [`docs/roadmap.md`](docs/roadmap.md) for the planned Circles trust score features: dynamic creator fees, trust-based settlement, campaign visibility, trust badges, configurable referrals, campaign quality reports, and fee split configuration.
