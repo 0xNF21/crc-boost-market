@@ -138,6 +138,8 @@ type GarageXStatus = {
 
 type GarageReferralStatus = {
   cycle: string;
+  authenticated: boolean;
+  address: string | null;
   milestones: Array<{ threshold: number; amountCrc: number }>;
   qualityMultipliers: ReadonlyArray<{
     status: GarageBackerStatus;
@@ -296,6 +298,8 @@ const EMPTY_STATUS: GarageXStatus = {
 
 const EMPTY_REFERRALS: GarageReferralStatus = {
   cycle: "cycle-01",
+  authenticated: false,
+  address: null,
   milestones: [
     { threshold: 1, amountCrc: 0.2 },
     { threshold: 3, amountCrc: 0.5 },
@@ -719,19 +723,29 @@ export default function CirclesGaragePage() {
   const loadData = useCallback(async () => {
     setLoadingData(true);
     try {
-      const [statusRes, campaignsRes, referralsRes, trustRes] = await Promise.all([
+      const [statusResult, campaignsResult, referralsResult, trustResult] = await Promise.allSettled([
         fetch("/api/garage/x/status", { cache: "no-store", credentials: "include", headers: clientAuthHeaders() }),
         fetch("/api/garage/x/campaigns", { cache: "no-store", credentials: "include", headers: clientAuthHeaders() }),
         fetch("/api/garage/referrals", { cache: "no-store", credentials: "include", headers: clientAuthHeaders() }),
         fetch("/api/garage/trust/status", { cache: "no-store", credentials: "include", headers: clientAuthHeaders() }),
       ]);
-      const statusData = await statusRes.json();
-      const campaignsData = await campaignsRes.json();
-      const referralsData = await referralsRes.json();
-      const trustData = await trustRes.json().catch(() => ({}));
+
+      const statusRes = statusResult.status === "fulfilled" ? statusResult.value : null;
+      const campaignsRes = campaignsResult.status === "fulfilled" ? campaignsResult.value : null;
+      const referralsRes = referralsResult.status === "fulfilled" ? referralsResult.value : null;
+      const trustRes = trustResult.status === "fulfilled" ? trustResult.value : null;
+
+      const statusData = statusRes?.ok ? await statusRes.json().catch(() => null) : null;
+      const campaignsData = campaignsRes?.ok ? await campaignsRes.json().catch(() => null) : null;
+      const referralsData = referralsRes?.ok ? await referralsRes.json().catch(() => null) : null;
+      const trustData = trustRes?.ok ? await trustRes.json().catch(() => ({})) : {};
       const visibleCampaigns = Array.isArray(campaignsData?.campaigns) ? campaignsData.campaigns : [];
-      setStatus({ ...EMPTY_STATUS, ...statusData });
-      setReferrals({ ...EMPTY_REFERRALS, ...referralsData });
+      setStatus(statusRes?.ok ? { ...EMPTY_STATUS, ...statusData } : { ...EMPTY_STATUS, unavailable: true });
+      setReferrals(
+        referralsRes?.ok
+          ? { ...EMPTY_REFERRALS, ...referralsData }
+          : { ...EMPTY_REFERRALS, unavailable: true },
+      );
       setTrustProfile(trustData?.trustProfile ?? null);
       setCampaigns(visibleCampaigns);
       const pendingPayment = visibleCampaigns.find(
@@ -987,7 +1001,15 @@ export default function CirclesGaragePage() {
         landingPath: `${window.location.pathname}${window.location.search}`,
       }),
     })
-      .then(() => {
+      .then(async (res) => {
+        const data = await res.json().catch(() => null);
+        if (!res.ok) {
+          throw new Error(data?.error || "referral_record_failed");
+        }
+        const status = typeof data?.status === "string" ? data.status : "";
+        if (!["recorded", "already_recorded", "self_referral"].includes(status)) {
+          throw new Error("referral_record_failed");
+        }
         window.localStorage.setItem(recordedKey, "1");
         void loadData();
       })
@@ -2186,6 +2208,16 @@ export default function CirclesGaragePage() {
                 <p className="mt-3 text-sm font-bold leading-6 text-ink/55 dark:text-white/58">
                   Share this Circles-name link. When a new wallet connects from it and completes verified boost missions, you unlock referral CRC for that invited user.
                 </p>
+                {profileAddress && !referrals.authenticated && (
+                  <div className="mt-4 rounded-lg border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm font-bold text-amber-800 dark:text-amber-100">
+                    Referral stats need an authenticated wallet session. Reconnect this wallet, then Sync.
+                  </div>
+                )}
+                {referrals.unavailable && (
+                  <div className="mt-4 rounded-lg border border-rose-500/25 bg-rose-500/10 px-4 py-3 text-sm font-bold text-rose-800 dark:text-rose-100">
+                    Referral stats are temporarily unavailable. Sync again in a moment.
+                  </div>
+                )}
                 <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <MiniStat label="Invited" value={formatNumber(referrals.mine.total)} />
                   <MiniStat label="Activated" value={formatNumber(referrals.rewards.activatedWallets)} />

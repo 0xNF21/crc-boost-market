@@ -297,6 +297,8 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       cycle: GARAGE_REFERRAL_CYCLE,
+      authenticated: Boolean(address),
+      address: address?.toLowerCase() ?? null,
       milestones: GARAGE_REFERRAL_REWARD_MILESTONES,
       qualityMultipliers: GARAGE_REFERRAL_QUALITY_GRID,
       minRewardCrc: GARAGE_REFERRAL_MIN_REWARD_CRC,
@@ -315,6 +317,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         cycle: GARAGE_REFERRAL_CYCLE,
+        authenticated: false,
+        address: null,
         global: { total: 0, referrers: 0, wallets: 0 },
         mine: { total: 0 },
         rewards: { crcEarned: 0, claimableCrc: 0, pendingCrc: 0, activatedWallets: 0 },
