@@ -51,7 +51,7 @@ Prochaine étape actuelle : `6. Ranking des campagnes`.
 | 4 | Preview paiement créateur | Validé | Le créateur voit reward pool, fee NF Society, raison du discount/premium, et total à payer avant paiement. |
 | 5 | Règles de settlement | Validé | La durée de settlement est fixée par claimant selon le trust score et le backer status du wallet qui claim. |
 | 6 | Ranking des campagnes | À tester | Les boosts live utilisent le trust/backer du créateur comme un facteur de ranking. |
-| 7 | Tiers de qualité referral | À faire | Les rewards referral peuvent varier selon la qualité du wallet invité tout en gardant les milestones actuels. |
+| 7 | Tiers de qualité referral | À tester | Les rewards referral peuvent varier selon la qualité du wallet invité tout en gardant les milestones actuels. |
 | 8 | Campaign quality report | À faire | Le creator dashboard explique la qualité des claimants, le succès settlement, les CRC dépensés et les X reads utilisés. |
 | 9 | Intelligent fee split | À faire | L'allocation de fee est configurable et visible dans la preview paiement créateur. |
 | 10 | Page réputation créateur | À faire | Un créateur peut montrer campagnes financées, CRC payés, stats qualité et trust/backer status. |
@@ -92,6 +92,16 @@ Journal de décision pour la brique 6 :
 - Implémenté : le ranking combine statut actif, reward par action, slots ouverts, fraîcheur, et trust/backer status du créateur en cache.
 - Implémenté : les cards boost affichent des raisons compactes comme `Direct creator`, `High trust creator`, `Good reward`, `Open slots`, ou `Fresh boost`.
 - À tester : comparer plusieurs campagnes live en production et confirmer que l'ordre et les raisons de ranking sont compréhensibles.
+- Statut actuel : `À tester`.
+
+Journal de décision pour la brique 7 :
+
+- Décidé : garder les milestones `1 / 3 / 5 missions`, puis appliquer un multiplicateur de qualité selon le wallet invité.
+- Implémenté : grille de multiplicateur par backer status et trust score : direct `1.5x / 1.3x / 1.15x`, indirect `1.25x / 1.1x / 1x`, sans backer `1x / 0.85x / 0.7x`.
+- Implémenté : les payouts referral stockent montant de base, multiplicateur, montant final, trust score du wallet invité, trust level, et backer status.
+- Implémenté : la zone referral du profil affiche une bulle informative avec la grille et le payout minimum.
+- Migration : `0002_referral_quality_multiplier` appliquée sur Neon.
+- À tester : inviter un wallet, compléter les milestones referral, et confirmer que le payout final utilise le multiplicateur du wallet invité.
 - Statut actuel : `À tester`.
 
 ## Intégration Du Trust Score

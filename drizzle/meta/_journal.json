@@ -15,6 +15,13 @@
       "when": 1779399292487,
       "tag": "0001_glossy_whiplash",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779447873077,
+      "tag": "0002_referral_quality_multiplier",
+      "breakpoints": true
     }
   ]
 }

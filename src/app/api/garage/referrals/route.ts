@@ -11,6 +11,7 @@ import {
   GARAGE_REFERRAL_REWARD_MILESTONES,
   getGarageReferralRewardSummary,
 } from "@/lib/garage-referral-rewards";
+import { GARAGE_REFERRAL_QUALITY_GRID, GARAGE_REFERRAL_MIN_REWARD_CRC } from "@/lib/garage-referral-quality";
 
 function normalizeAddress(value: unknown): string | null {
   if (typeof value !== "string") return null;
@@ -97,6 +98,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       cycle: GARAGE_REFERRAL_CYCLE,
       milestones: GARAGE_REFERRAL_REWARD_MILESTONES,
+      qualityMultipliers: GARAGE_REFERRAL_QUALITY_GRID,
+      minRewardCrc: GARAGE_REFERRAL_MIN_REWARD_CRC,
       global: {
         total: asNumber(global?.total),
         referrers: asNumber(global?.referrers),
@@ -115,6 +118,8 @@ export async function GET(req: NextRequest) {
         mine: { total: 0 },
         rewards: { crcEarned: 0, pendingCrc: 0, activatedWallets: 0 },
         milestones: GARAGE_REFERRAL_REWARD_MILESTONES,
+        qualityMultipliers: GARAGE_REFERRAL_QUALITY_GRID,
+        minRewardCrc: GARAGE_REFERRAL_MIN_REWARD_CRC,
         recent: [],
         unavailable: true,
       },

@@ -51,7 +51,7 @@ Current next step: `6. Campaign ranking`.
 | 4 | Creator payment preview | Validated | Creator sees reward pool, NF Society fee, discount/premium reason, and total due before paying. |
 | 5 | Settlement duration rules | Validated | Claim settlement duration is set per claimant based on the wallet trust score and backer status. |
 | 6 | Campaign ranking | To test | Live boosts use creator trust/backer signals as one ranking factor. |
-| 7 | Referral quality tiers | Todo | Referral rewards can vary by invited wallet quality while keeping the current milestones. |
+| 7 | Referral quality tiers | To test | Referral rewards can vary by invited wallet quality while keeping the current milestones. |
 | 8 | Campaign quality report | Todo | Creator dashboard explains claimant quality, settlement success, CRC spent, and X reads used. |
 | 9 | Intelligent fee split | Todo | Fee allocation is configurable and visible in the creator payment preview. |
 | 10 | Creator reputation page | Todo | A creator can show campaigns funded, CRC paid, quality stats, and trust/backer status. |
@@ -92,6 +92,16 @@ Decision log for slice 6:
 - Implemented: campaign ranking combines active status, reward per action, open slots, freshness, and cached creator trust/backer status.
 - Implemented: boost cards show compact ranking reasons such as `Direct creator`, `High trust creator`, `Good reward`, `Open slots`, or `Fresh boost`.
 - To test: compare several live campaigns in production and confirm the ordering and ranking reasons feel understandable.
+- Current status: `To test`.
+
+Decision log for slice 7:
+
+- Decided: keep the `1 / 3 / 5 mission` milestones, then apply a quality multiplier based on the invited wallet.
+- Implemented: multiplier grid by backer status and trust score: direct `1.5x / 1.3x / 1.15x`, indirect `1.25x / 1.1x / 1x`, no-backer `1x / 0.85x / 0.7x`.
+- Implemented: referral payouts store base amount, quality multiplier, final amount, invited wallet trust score, trust level, and backer status.
+- Implemented: profile referral area includes an info bubble with the multiplier grid and minimum payout.
+- Migration: `0002_referral_quality_multiplier` applied to Neon.
+- To test: invite a wallet, complete referral milestones, and confirm the final payout uses the invited wallet multiplier.
 - Current status: `To test`.
 
 ## Trust Score Integration

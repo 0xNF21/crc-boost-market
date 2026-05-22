@@ -2,6 +2,11 @@ import { and, count, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { garageReferralRewards, garageReferrals, garageXClaims } from "@/lib/db/schema";
 import { executePayout } from "@/lib/payout";
+import { getGarageTrustProfile } from "@/lib/garage-trust";
+import {
+  calculateGarageReferralRewardAmount,
+  getGarageReferralQualityTier,
+} from "@/lib/garage-referral-quality";
 
 export const GARAGE_REFERRAL_CYCLE = "cycle-01";
 
@@ -47,9 +52,15 @@ export async function processGarageReferralRewardsForWallet(walletAddress: strin
   const unlocked = GARAGE_REFERRAL_REWARD_MILESTONES.filter(
     (milestone) => qualifyingClaims >= milestone.threshold,
   );
+  const referredTrustProfile = await getGarageTrustProfile(referredAddress).catch(() => null);
+  const qualityTier = getGarageReferralQualityTier({
+    backerStatus: referredTrustProfile?.backerStatus ?? "none",
+    trustScore: referredTrustProfile?.trustScore ?? null,
+  });
 
   let processed = 0;
   for (const milestone of unlocked) {
+    const amountCrc = calculateGarageReferralRewardAmount(milestone.amountCrc, qualityTier.multiplier);
     let [reward] = await db
       .insert(garageReferralRewards)
       .values({
@@ -57,7 +68,12 @@ export async function processGarageReferralRewardsForWallet(walletAddress: strin
         referrerAddress: referral.referrerAddress,
         referredAddress,
         threshold: milestone.threshold,
-        amountCrc: milestone.amountCrc,
+        amountCrc,
+        baseAmountCrc: milestone.amountCrc,
+        qualityMultiplier: qualityTier.multiplier,
+        referredTrustScore: referredTrustProfile?.trustScore ?? null,
+        referredTrustLevel: referredTrustProfile?.trustLevel ?? null,
+        referredBackerStatus: qualityTier.backerStatus,
         qualifyingClaims,
         status: "pending",
       })
@@ -83,6 +99,12 @@ export async function processGarageReferralRewardsForWallet(walletAddress: strin
     await db
       .update(garageReferralRewards)
       .set({
+        amountCrc,
+        baseAmountCrc: milestone.amountCrc,
+        qualityMultiplier: qualityTier.multiplier,
+        referredTrustScore: referredTrustProfile?.trustScore ?? null,
+        referredTrustLevel: referredTrustProfile?.trustLevel ?? null,
+        referredBackerStatus: qualityTier.backerStatus,
         qualifyingClaims,
         status: "pending",
         errorMessage: null,
@@ -94,8 +116,8 @@ export async function processGarageReferralRewardsForWallet(walletAddress: strin
       gameType: "garage_referral_bonus",
       gameId: `garage-referral-${GARAGE_REFERRAL_CYCLE}-${referredAddress}-${milestone.threshold}`,
       recipientAddress: referral.referrerAddress,
-      amountCrc: milestone.amountCrc,
-      reason: `Garage referral bonus - ${milestone.threshold} verified mission${milestone.threshold > 1 ? "s" : ""}`,
+      amountCrc,
+      reason: `Garage referral bonus - ${milestone.threshold} verified mission${milestone.threshold > 1 ? "s" : ""} - ${qualityTier.label} (${qualityTier.multiplier}x)`,
       payoutReason: "dao_reward",
     });
 
