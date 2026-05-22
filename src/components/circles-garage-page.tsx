@@ -169,7 +169,29 @@ type GarageReferralStatus = {
     referredAddress: string;
     createdAt: string;
   }>;
+  activity: GarageReferralActivity[];
   unavailable?: boolean;
+};
+
+type GarageReferralActivity = {
+  id: number;
+  referredAddress: string;
+  createdAt: string;
+  missions: number;
+  xReads: number;
+  lastMissionAt: string | null;
+  trustScore: number | null;
+  trustLevel: string | null;
+  mutualCount: number;
+  backerStatus: GarageBackerStatus;
+  qualityMultiplier: number;
+  claimableCrc: number;
+  claimedCrc: number;
+  pendingCrc: number;
+  totalCrc: number;
+  unlockedMilestones: number;
+  highestMilestone: number;
+  status: "invited" | "missions_detected" | "claimable" | "claiming" | "claimed";
 };
 
 type GarageXCampaign = {
@@ -254,6 +276,7 @@ const EMPTY_REFERRALS: GarageReferralStatus = {
   mine: { total: 0 },
   rewards: { crcEarned: 0, claimableCrc: 0, pendingCrc: 0, activatedWallets: 0 },
   recent: [],
+  activity: [],
 };
 
 const X_CONNECT_START_URL = "/api/garage/x/connect/start?returnTo=%2Fgarage";
@@ -287,6 +310,27 @@ function formatPercentFromBps(value: number | null | undefined) {
 function formatMultiplier(value: number | null | undefined) {
   if (value == null || !Number.isFinite(value)) return "1x";
   return `${formatNumber(value)}x`;
+}
+
+function formatTrustValue(score: number | null | undefined, level: string | null | undefined) {
+  if (score == null || !Number.isFinite(score)) return null;
+  return level ? `${score} / ${level}` : String(score);
+}
+
+function referralActivityLabel(status: GarageReferralActivity["status"]) {
+  if (status === "claimable") return "Claimable";
+  if (status === "claiming") return "Claiming";
+  if (status === "claimed") return "Claimed";
+  if (status === "missions_detected") return "Tracked";
+  return "Waiting";
+}
+
+function referralActivityTone(status: GarageReferralActivity["status"]) {
+  if (status === "claimable") return "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300";
+  if (status === "claiming") return "bg-marine/10 text-marine dark:text-sky-300";
+  if (status === "claimed") return "bg-ink/8 text-ink/55 dark:bg-white/10 dark:text-white/60";
+  if (status === "missions_detected") return "bg-citrus/10 text-citrus";
+  return "bg-ink/6 text-ink/45 dark:bg-white/10 dark:text-white/50";
 }
 
 function roundCrc(value: number) {
@@ -554,6 +598,7 @@ export default function CirclesGaragePage() {
   const [profileReferralOpen, setProfileReferralOpen] = useState(false);
   const [creatorFormOpen, setCreatorFormOpen] = useState(true);
   const [leaderboardProfiles, setLeaderboardProfiles] = useState<Record<string, CirclesProfile>>({});
+  const [referralProfiles, setReferralProfiles] = useState<Record<string, CirclesProfile>>({});
   const [myProfile, setMyProfile] = useState<CirclesProfile | null>(null);
   const [landingReferrer, setLandingReferrer] = useState<string | null>(null);
   const [origin, setOrigin] = useState("");
@@ -769,6 +814,37 @@ export default function CirclesGaragePage() {
       cancelled = true;
     };
   }, [status.leaderboard]);
+
+  useEffect(() => {
+    const addresses = Array.from(
+      new Set(referrals.activity.map((entry) => entry.referredAddress.toLowerCase()).filter(isAddress)),
+    );
+
+    if (!addresses.length) {
+      setReferralProfiles({});
+      return;
+    }
+
+    let cancelled = false;
+    void fetch("/api/profiles", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ addresses }),
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled) {
+          setReferralProfiles(data?.profiles ?? {});
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setReferralProfiles({});
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [referrals.activity]);
 
   useEffect(() => {
     const rawRef = new URLSearchParams(window.location.search).get("ref")?.trim() ?? "";
@@ -2053,6 +2129,7 @@ export default function CirclesGaragePage() {
                     </p>
                   )}
                 </div>
+                <ReferralActivityList activity={referrals.activity} profiles={referralProfiles} />
                 <div className="mt-5 min-w-0 rounded-lg border border-ink/10 bg-[#f0ede5] p-4 dark:border-white/10 dark:bg-white/5">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
@@ -3019,6 +3096,119 @@ function CreatorDashboard({
         </>
       )}
     </section>
+  );
+}
+
+function ReferralActivityList({
+  activity,
+  profiles,
+}: {
+  activity: GarageReferralActivity[];
+  profiles: Record<string, CirclesProfile>;
+}) {
+  const activeWallets = activity.filter((entry) => entry.missions > 0).length;
+
+  return (
+    <details className="group mt-4 rounded-lg border border-ink/10 bg-[#f0ede5] p-4 dark:border-white/10 dark:bg-white/5">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left [&::-webkit-details-marker]:hidden">
+        <div className="min-w-0">
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-ink/45 dark:text-white/45">
+            Referral tracking
+          </p>
+          <h3 className="font-display text-lg font-black">Invited wallets</h3>
+          <p className="mt-1 text-xs font-bold text-ink/50 dark:text-white/50">
+            {formatNumber(activity.length)} invited - {formatNumber(activeWallets)} with missions
+          </p>
+        </div>
+        <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-ink/10 bg-[#fbfaf6] text-ink/70 dark:border-white/10 dark:bg-white/10 dark:text-white/75">
+          <ChevronDown className="h-5 w-5 transition group-open:rotate-180" />
+        </span>
+      </summary>
+
+      <div className="mt-4 max-h-[420px] space-y-2 overflow-y-auto pr-1">
+        {activity.length ? (
+          activity.map((entry) => {
+            const profile = profiles[entry.referredAddress.toLowerCase()];
+            const displayName = profile?.name || shortAddress(entry.referredAddress);
+            const trustValue = formatTrustValue(entry.trustScore, entry.trustLevel);
+            const missionLabel = entry.missions === 1 ? "mission" : "missions";
+            const crcLabel =
+              entry.claimableCrc > 0
+                ? `${formatNumber(entry.claimableCrc)} CRC claimable`
+                : entry.pendingCrc > 0
+                  ? `${formatNumber(entry.pendingCrc)} CRC claiming`
+                  : entry.claimedCrc > 0
+                    ? `${formatNumber(entry.claimedCrc)} CRC claimed`
+                    : "0 CRC unlocked";
+
+            return (
+              <div
+                key={entry.id}
+                className="flex flex-col gap-3 rounded-md border border-ink/10 bg-[#fbfaf6] px-3 py-3 dark:border-white/10 dark:bg-black/20 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  {profile?.imageUrl ? (
+                    <img
+                      src={profile.imageUrl}
+                      alt={displayName}
+                      className="h-10 w-10 shrink-0 rounded-full border border-ink/10 object-cover dark:border-white/10"
+                    />
+                  ) : (
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-ink/10 bg-[#f0ede5] text-sm font-black text-ink/45 dark:border-white/10 dark:bg-white/10 dark:text-white/45">
+                      {displayName.slice(0, 1).toUpperCase()}
+                    </span>
+                  )}
+                  <div className="min-w-0">
+                    <p className="truncate font-display text-base font-black leading-tight sm:max-w-[230px]">
+                      {displayName}
+                    </p>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-bold text-ink/45 dark:text-white/45">
+                      <span>{shortAddress(entry.referredAddress)}</span>
+                      <span>invited {formatDateTime(entry.createdAt)}</span>
+                      {entry.lastMissionAt ? <span>last mission {formatDateTime(entry.lastMissionAt)}</span> : null}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 text-[11px] font-black uppercase sm:justify-end">
+                  <span className={`rounded-full px-3 py-1.5 ${referralActivityTone(entry.status)}`}>
+                    {referralActivityLabel(entry.status)}
+                  </span>
+                  <span className="rounded-full bg-ink/6 px-3 py-1.5 text-ink/70 dark:bg-white/10 dark:text-white/75">
+                    {formatNumber(entry.missions)} {missionLabel}
+                  </span>
+                  <span className="rounded-full bg-ink/6 px-3 py-1.5 text-ink/70 dark:bg-white/10 dark:text-white/75">
+                    {crcLabel}
+                  </span>
+                  <span className="rounded-full bg-ink/6 px-3 py-1.5 text-ink/60 dark:bg-white/10 dark:text-white/65">
+                    {formatMultiplier(entry.qualityMultiplier)}
+                  </span>
+                  <BackerStatusBadge status={entry.backerStatus} size="compact" />
+                  {trustValue ? (
+                    <span className="rounded-full bg-ink/6 px-3 py-1.5 text-ink/60 dark:bg-white/10 dark:text-white/65">
+                      Trust {trustValue}
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-ink/6 px-3 py-1.5 text-ink/45 dark:bg-white/10 dark:text-white/50">
+                      Trust pending
+                    </span>
+                  )}
+                  {entry.mutualCount > 0 ? (
+                    <span className="rounded-full bg-ink/6 px-3 py-1.5 text-ink/60 dark:bg-white/10 dark:text-white/65">
+                      {formatNumber(entry.mutualCount)} mutual
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="rounded-md border border-ink/10 bg-[#fbfaf6] p-4 text-sm font-bold text-ink/52 dark:border-white/10 dark:bg-black/20 dark:text-white/55">
+            No invited wallets yet. Share your link, then each invited wallet will appear here.
+          </div>
+        )}
+      </div>
+    </details>
   );
 }
 

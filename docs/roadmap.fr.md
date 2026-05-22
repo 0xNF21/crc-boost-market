@@ -101,6 +101,7 @@ Journal de décision pour la brique 7 :
 - Implémenté : les payouts referral stockent montant de base, multiplicateur, montant final, trust score du wallet invité, trust level, et backer status.
 - Implémenté : la zone referral du profil affiche une bulle informative avec la grille et le payout minimum.
 - Mis à jour : les milestones referral créent maintenant un solde claimable au lieu de micro-payouts automatiques ; le referrer peut claim un payout groupé quand il veut.
+- Implémenté : la zone referral du profil inclut un tiroir de suivi par wallet invité avec missions, CRC, multiplicateur, trust score et backer status.
 - Migration : `0002_referral_quality_multiplier` appliquée sur Neon.
 - À tester : inviter un wallet, compléter les milestones referral, confirmer que le solde claimable utilise le multiplicateur du wallet invité, puis claim le payout groupé.
 - Statut actuel : `À tester`.

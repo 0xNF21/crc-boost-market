@@ -17,8 +17,8 @@ export const GARAGE_REFERRAL_REWARD_MILESTONES = [
   { threshold: 5, amountCrc: 1 },
 ] as const;
 
-const QUALIFYING_CLAIM_STATUSES = ["paid", "payout_sending", "payout_pending"];
-const CLAIMABLE_REWARD_STATUSES = ["claimable", "pending", "payout_failed"];
+export const QUALIFYING_CLAIM_STATUSES = ["paid", "payout_sending", "payout_pending"];
+export const CLAIMABLE_REWARD_STATUSES = ["claimable", "pending", "payout_failed"];
 
 export function isGarageReferralRewardStatusPaid(status: string | null | undefined) {
   return status === "paid" || status === "payout_sending" || status === "payout_pending";
