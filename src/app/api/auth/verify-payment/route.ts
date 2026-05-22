@@ -107,6 +107,7 @@ export async function POST(req: NextRequest) {
         authenticated: true,
         address: existing.address,
         expiresAt: newSession.expiresAt.toISOString(),
+        sessionToken: newSession.token,
         recovered: true,
       });
       setAuthCookie(res, newSession.token, { expiresAt: newSession.expiresAt });
