@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { LanguageProvider } from "@/components/language-provider";
 import { MiniAppProvider } from "@/components/miniapp-provider";
 import { AuthProvider } from "@/components/auth-provider";
+import { getCrcBoostPublicUrl } from "@/lib/public-url";
 
 const display = Space_Grotesk({
   subsets: ["latin"],
@@ -17,26 +18,41 @@ const body = Sora({
   variable: "--font-body",
 });
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://crc-boost-market.vercel.app";
+const appUrl = getCrcBoostPublicUrl();
+const appName = "CRC Boosts by NF-Society";
+const appDescription = "A Circles-native attention market where creators fund CRC rewards for verified X actions.";
+const socialDescription = "Creators fund CRC rewards for verified X attention. Users earn CRC after settlement.";
+const socialImage = "/crc-boost-bg-dark.png";
 
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
-  title: "CRC Boosts by NF-Society",
-  description: "A Circles-native attention market where creators fund CRC rewards for verified X actions.",
+  applicationName: appName,
+  title: appName,
+  description: appDescription,
+  alternates: {
+    canonical: appUrl,
+  },
   openGraph: {
-    title: "CRC Boosts by NF-Society",
-    description: "Creators fund CRC rewards for verified X attention. Users earn CRC after settlement.",
+    title: appName,
+    description: socialDescription,
     url: appUrl,
-    siteName: "CRC Boosts by NF-Society",
+    siteName: appName,
     locale: "fr_FR",
     type: "website",
-    images: ["/crc-boost-logo.png"],
+    images: [
+      {
+        url: socialImage,
+        width: 1280,
+        height: 720,
+        alt: "CRC Boosts attention market",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "CRC Boosts by NF-Society",
-    description: "Creators fund CRC rewards for verified X attention. Users earn CRC after settlement.",
-    images: ["/crc-boost-logo.png"],
+    title: appName,
+    description: socialDescription,
+    images: [socialImage],
   },
   icons: {
     icon: "/crc-boost-icon.png",

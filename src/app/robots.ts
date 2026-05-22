@@ -1,8 +1,10 @@
 import type { MetadataRoute } from "next";
+import { getCrcBoostPublicUrl } from "@/lib/public-url";
 
 export default function robots(): MetadataRoute.Robots {
+  const base = getCrcBoostPublicUrl();
   return {
     rules: [{ userAgent: "*", allow: "/" }],
-    sitemap: `${process.env.NEXT_PUBLIC_APP_URL || "https://crc-boost-market.vercel.app"}/sitemap.xml`,
+    sitemap: `${base}/sitemap.xml`,
   };
 }
