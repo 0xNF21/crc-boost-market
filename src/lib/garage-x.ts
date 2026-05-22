@@ -85,6 +85,13 @@ export type GarageCampaignQualityReport = {
   };
 };
 
+export type GarageCampaignQualityClaimRow = {
+  status: string;
+  verificationChecked: number;
+  trustScore: number | null;
+  backerStatus: string | null;
+};
+
 export type GarageCampaignRanking = {
   score: number;
   reasons: string[];
@@ -160,6 +167,75 @@ export function getGarageXPayoutDelaySeconds(): number {
 
 function roundCrc(value: number) {
   return Math.round(value * 100) / 100;
+}
+
+function median(values: number[]) {
+  if (!values.length) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : Math.round(((sorted[mid - 1] + sorted[mid]) / 2) * 100) / 100;
+}
+
+function qualityTrustBand(score: number | null): keyof GarageCampaignQualityReport["trustBands"] {
+  if (score === null || !Number.isFinite(score)) return "unknown";
+  if (score >= 70) return "high";
+  if (score >= 40) return "medium";
+  return "low";
+}
+
+function qualityBackerStatus(status: string | null | undefined): keyof GarageCampaignQualityReport["backerSplit"] {
+  return status === "direct" || status === "indirect" || status === "none" ? status : "unknown";
+}
+
+export const GARAGE_PAID_CLAIM_STATUSES = ["paid", "payout_sending", "payout_pending"];
+
+export function buildGarageCampaignQualityReport(
+  campaign: Pick<GarageXCampaign, "rewardCrc">,
+  rows: GarageCampaignQualityClaimRow[],
+): GarageCampaignQualityReport {
+  const rewardCrc = Number(campaign.rewardCrc || 0);
+  const paidClaims = rows.filter((row) => GARAGE_PAID_CLAIM_STATUSES.includes(row.status)).length;
+  const pendingSettlementClaims = rows.filter((row) => row.status === "verified_pending").length;
+  const removedActionClaims = rows.filter((row) => row.status === "verification_expired").length;
+  const payoutFailedClaims = rows.filter((row) => row.status === "payout_failed").length;
+  const verifiedClaims = rows.filter((row) => row.status !== "verification_expired").length;
+  const settledClaims = paidClaims + removedActionClaims;
+  const trustScores = rows
+    .map((row) => row.trustScore)
+    .filter((score): score is number => typeof score === "number" && Number.isFinite(score));
+  const trustBands = { high: 0, medium: 0, low: 0, unknown: 0 };
+  const backerSplit = { direct: 0, indirect: 0, none: 0, unknown: 0 };
+
+  for (const row of rows) {
+    trustBands[qualityTrustBand(row.trustScore)] += 1;
+    backerSplit[qualityBackerStatus(row.backerStatus)] += 1;
+  }
+
+  const crcPaid = roundCrc(paidClaims * rewardCrc);
+  const crcPending = roundCrc(pendingSettlementClaims * rewardCrc);
+  const verifiedCost = crcPaid + crcPending;
+
+  return {
+    totalClaims: rows.length,
+    verifiedClaims,
+    paidClaims,
+    pendingSettlementClaims,
+    removedActionClaims,
+    payoutFailedClaims,
+    xReads: rows.reduce((sum, row) => sum + Number(row.verificationChecked || 0), 0),
+    crcPaid,
+    crcPending,
+    costPerVerifiedClaim: verifiedClaims > 0 ? roundCrc(verifiedCost / verifiedClaims) : null,
+    costPerPaidClaim: paidClaims > 0 ? roundCrc(crcPaid / paidClaims) : null,
+    settlementSuccessRate: settledClaims > 0 ? Math.round((paidClaims / settledClaims) * 100) : null,
+    averageTrustScore: trustScores.length
+      ? Math.round((trustScores.reduce((sum, score) => sum + score, 0) / trustScores.length) * 100) / 100
+      : null,
+    medianTrustScore: median(trustScores),
+    trustCoverage: rows.length > 0 ? Math.round((trustScores.length / rows.length) * 100) : 0,
+    trustBands,
+    backerSplit,
+  };
 }
 
 function sanitizePaymentDataPart(value: string | null | undefined, fallback: string): string {

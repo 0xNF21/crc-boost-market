@@ -657,6 +657,11 @@ export default function CirclesGaragePage() {
     const refCode = profileCode || profileAddress.toLowerCase();
     return `${origin}/garage?ref=${encodeURIComponent(refCode)}`;
   }, [myProfile?.name, origin, profileAddress]);
+  const creatorProfileHref = useMemo(() => {
+    if (!profileAddress) return null;
+    const profileCode = referralCodeFromProfileName(myProfile?.name);
+    return `/garage/creator/${encodeURIComponent(profileCode || profileAddress.toLowerCase())}`;
+  }, [myProfile?.name, profileAddress]);
 
   const creatorFeeTier = useMemo(
     () => getGarageCreatorFeeTier(trustProfile, status.settings.campaignFeeBps),
@@ -2252,6 +2257,7 @@ export default function CirclesGaragePage() {
             campaigns={creatorCampaigns}
             isAuthenticated={isAuthenticated}
             isMiniApp={isMiniApp}
+            creatorProfileHref={creatorProfileHref}
             onConnect={openLogin}
             onPay={(payment) => void payCampaignFunding(payment)}
             onScan={(payment) => void scanCampaignFunding(payment)}
@@ -2945,6 +2951,7 @@ function CreatorDashboard({
   campaigns,
   isAuthenticated,
   isMiniApp,
+  creatorProfileHref,
   onConnect,
   onPay,
   onScan,
@@ -2957,6 +2964,7 @@ function CreatorDashboard({
   campaigns: GarageXCampaign[];
   isAuthenticated: boolean;
   isMiniApp: boolean;
+  creatorProfileHref: string | null;
   onConnect: () => void;
   onPay: (payment: GarageCampaignFundingPayment) => void;
   onScan: (payment: GarageCampaignFundingPayment) => void;
@@ -3019,10 +3027,21 @@ function CreatorDashboard({
           </p>
           <h2 className="mt-1 font-display text-xl font-black">My boosts</h2>
         </div>
-        <span className="inline-flex w-fit items-center gap-2 rounded-md bg-citrus/10 px-3 py-1.5 text-xs font-black uppercase tracking-[0.12em] text-citrus">
-          <CircleDollarSign className="h-3.5 w-3.5" />
-          NF Society fee
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          {creatorProfileHref && (
+            <Link
+              href={creatorProfileHref}
+              className="inline-flex w-fit items-center gap-2 rounded-md border border-ink/10 bg-[#f0ede5] px-3 py-1.5 text-xs font-black uppercase tracking-[0.12em] text-ink/65 transition hover:bg-white dark:border-white/10 dark:bg-white/10 dark:text-white/70"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              View creator profile
+            </Link>
+          )}
+          <span className="inline-flex w-fit items-center gap-2 rounded-md bg-citrus/10 px-3 py-1.5 text-xs font-black uppercase tracking-[0.12em] text-citrus">
+            <CircleDollarSign className="h-3.5 w-3.5" />
+            NF Society fee
+          </span>
+        </div>
       </div>
 
       {!isAuthenticated ? (

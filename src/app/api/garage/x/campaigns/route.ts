@@ -7,9 +7,9 @@ import { getAuthenticatedAddress, requireAuthenticatedAddress } from "@/lib/auth
 import { garageTrustProfiles, garageXCampaigns, garageXClaims } from "@/lib/db/schema";
 import { enforceRateLimit } from "@/lib/rate-limit";
 import { getGarageCreatorFeeTier } from "@/lib/garage-fees";
-import type { GarageCampaignQualityReport } from "@/lib/garage-x";
 import {
   SEEDED_GARAGE_X_CAMPAIGN,
+  buildGarageCampaignQualityReport,
   calculateGarageCampaignFunding,
   getGarageCampaignFeeBps,
   campaignToPublic,
@@ -21,8 +21,6 @@ import {
   rankGarageCampaigns,
 } from "@/lib/garage-x";
 
-const PAID_CLAIM_STATUSES = ["paid", "payout_sending", "payout_pending"];
-
 type QualityClaimRow = {
   campaignId: number;
   status: string;
@@ -30,9 +28,6 @@ type QualityClaimRow = {
   trustScore: number | null;
   backerStatus: string | null;
 };
-
-type QualityTrustBand = keyof GarageCampaignQualityReport["trustBands"];
-type QualityBackerStatus = keyof GarageCampaignQualityReport["backerSplit"];
 
 function slugify(value: string) {
   return value
@@ -57,77 +52,6 @@ function cleanNumber(value: unknown, fallback: number) {
 
 function shortSlugSuffix() {
   return Math.random().toString(36).slice(2, 6);
-}
-
-function roundCrc(value: number) {
-  return Math.round(value * 100) / 100;
-}
-
-function median(values: number[]) {
-  if (!values.length) return null;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? sorted[mid] : Math.round(((sorted[mid - 1] + sorted[mid]) / 2) * 100) / 100;
-}
-
-function trustBand(score: number | null): QualityTrustBand {
-  if (score === null || !Number.isFinite(score)) return "unknown";
-  if (score >= 70) return "high";
-  if (score >= 40) return "medium";
-  return "low";
-}
-
-function normalizedBackerStatus(status: string | null | undefined): QualityBackerStatus {
-  return status === "direct" || status === "indirect" || status === "none" ? status : "unknown";
-}
-
-function buildCampaignQualityReport(
-  campaign: typeof garageXCampaigns.$inferSelect,
-  rows: QualityClaimRow[],
-): GarageCampaignQualityReport {
-  const rewardCrc = Number(campaign.rewardCrc || 0);
-  const paidClaims = rows.filter((row) => PAID_CLAIM_STATUSES.includes(row.status)).length;
-  const pendingSettlementClaims = rows.filter((row) => row.status === "verified_pending").length;
-  const removedActionClaims = rows.filter((row) => row.status === "verification_expired").length;
-  const payoutFailedClaims = rows.filter((row) => row.status === "payout_failed").length;
-  const verifiedClaims = rows.filter((row) => row.status !== "verification_expired").length;
-  const settledClaims = paidClaims + removedActionClaims;
-  const trustScores = rows
-    .map((row) => row.trustScore)
-    .filter((score): score is number => typeof score === "number" && Number.isFinite(score));
-  const trustBands = { high: 0, medium: 0, low: 0, unknown: 0 };
-  const backerSplit = { direct: 0, indirect: 0, none: 0, unknown: 0 };
-
-  for (const row of rows) {
-    trustBands[trustBand(row.trustScore)] += 1;
-    backerSplit[normalizedBackerStatus(row.backerStatus)] += 1;
-  }
-
-  const crcPaid = roundCrc(paidClaims * rewardCrc);
-  const crcPending = roundCrc(pendingSettlementClaims * rewardCrc);
-  const verifiedCost = crcPaid + crcPending;
-
-  return {
-    totalClaims: rows.length,
-    verifiedClaims,
-    paidClaims,
-    pendingSettlementClaims,
-    removedActionClaims,
-    payoutFailedClaims,
-    xReads: rows.reduce((sum, row) => sum + Number(row.verificationChecked || 0), 0),
-    crcPaid,
-    crcPending,
-    costPerVerifiedClaim: verifiedClaims > 0 ? roundCrc(verifiedCost / verifiedClaims) : null,
-    costPerPaidClaim: paidClaims > 0 ? roundCrc(crcPaid / paidClaims) : null,
-    settlementSuccessRate: settledClaims > 0 ? Math.round((paidClaims / settledClaims) * 100) : null,
-    averageTrustScore: trustScores.length
-      ? Math.round((trustScores.reduce((sum, score) => sum + score, 0) / trustScores.length) * 100) / 100
-      : null,
-    medianTrustScore: median(trustScores),
-    trustCoverage: rows.length > 0 ? Math.round((trustScores.length / rows.length) * 100) : 0,
-    trustBands,
-    backerSplit,
-  };
 }
 
 export async function GET(req: NextRequest) {
@@ -257,7 +181,7 @@ export async function GET(req: NextRequest) {
             { claims: claimCountByCampaign.get(campaign.id) ?? 0 },
             ownByCampaign.get(campaign.id) ?? null,
           ),
-          qualityReport: buildCampaignQualityReport(campaign, qualityRowsByCampaign.get(campaign.id) ?? []),
+          qualityReport: buildGarageCampaignQualityReport(campaign, qualityRowsByCampaign.get(campaign.id) ?? []),
           fundingPayment:
             address &&
             campaign.status === "pending_payment" &&

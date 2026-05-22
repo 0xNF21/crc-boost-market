@@ -41,7 +41,7 @@ Pour chaque brique, garder un mini journal de décision :
 
 ## Suivi D'avancement
 
-Prochaine étape actuelle : `8. Validation du campaign quality report`.
+Prochaine étape actuelle : `10. Validation de la page réputation créateur`.
 
 | # | Brique | Statut | Critère de validation |
 |---|---|---|---|
@@ -54,7 +54,7 @@ Prochaine étape actuelle : `8. Validation du campaign quality report`.
 | 7 | Tiers de qualité referral | À tester | Les rewards referral peuvent varier selon la qualité du wallet invité tout en gardant les milestones actuels. |
 | 8 | Campaign quality report | À tester | Le creator dashboard explique la qualité des claimants, le succès settlement, les CRC dépensés et les X reads utilisés. |
 | 9 | Intelligent fee split | À faire | L'allocation de fee est configurable et visible dans la preview paiement créateur. |
-| 10 | Page réputation créateur | À faire | Un créateur peut montrer campagnes financées, CRC payés, stats qualité et trust/backer status. |
+| 10 | Page réputation créateur | À tester | Un créateur peut montrer campagnes financées, CRC payés, stats qualité et trust/backer status. |
 | 11 | Dashboard santé du marché | À faire | Le market status inclut la distribution trust/backer, pas seulement les claims et payouts bruts. |
 | 12 | Missions conversion backer | Mis de côté | À reprendre seulement quand les données trust/backer sont fiables et que le core market est stable. |
 
@@ -112,6 +112,15 @@ Journal de décision pour la brique 8 :
 - Implémenté : chaque campagne créateur reçoit un quality report avec claims vérifiés, CRC payés/en attente, X reads, succès settlement, actions retirées, trust moyen/médian des claimants, couverture trust, répartition high/medium/low/no score et split direct/indirect/sans lien/unknown.
 - Implémenté : les cartes campagne dans `My boosts` incluent une section déroulante `Campaign quality report` qui s'ouvre automatiquement dès qu'il y a des claims.
 - À tester : faire plusieurs claims sur une campagne créateur et confirmer que le report correspond aux données Neon et reste compréhensible.
+- Statut actuel : `À tester`.
+
+Journal de décision pour la brique 10 :
+
+- Décidé : la réputation créateur doit être une page publique partageable, liée depuis le Creator dashboard.
+- Implémenté : `/garage/creator/[id]` accepte un slug de profil Circles ou une adresse wallet.
+- Implémenté : la page affiche identité Circles, compte X lié si disponible, trust/backer status, campagnes financées, CRC payés/en attente, wallets touchés, succès settlement, qualité trust des claimants, split backer et historique des campagnes.
+- Implémenté : le Creator dashboard inclut un lien `View creator profile` qui utilise le nom Circles quand il existe, sinon l'adresse wallet.
+- À tester : ouvrir la page créateur en production, vérifier la résolution `cryptosnf`, et comparer les totaux avec le creator dashboard.
 - Statut actuel : `À tester`.
 
 ## Intégration Du Trust Score

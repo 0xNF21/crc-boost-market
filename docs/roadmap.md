@@ -41,7 +41,7 @@ For every slice, keep a short decision log:
 
 ## Progress Tracker
 
-Current next step: `8. Campaign quality report validation`.
+Current next step: `10. Creator reputation page validation`.
 
 | # | Slice | Status | Validation criteria |
 |---|---|---|---|
@@ -54,7 +54,7 @@ Current next step: `8. Campaign quality report validation`.
 | 7 | Referral quality tiers | To test | Referral rewards can vary by invited wallet quality while keeping the current milestones. |
 | 8 | Campaign quality report | To test | Creator dashboard explains claimant quality, settlement success, CRC spent, and X reads used. |
 | 9 | Intelligent fee split | Todo | Fee allocation is configurable and visible in the creator payment preview. |
-| 10 | Creator reputation page | Todo | A creator can show campaigns funded, CRC paid, quality stats, and trust/backer status. |
+| 10 | Creator reputation page | To test | A creator can show campaigns funded, CRC paid, quality stats, and trust/backer status. |
 | 11 | Market health dashboard | Todo | Market status includes trust/backer distribution, not only raw claims and payouts. |
 | 12 | Backer conversion missions | Parked | Only revisit once trust/backer data is reliable and the core market is stable. |
 
@@ -112,6 +112,15 @@ Decision log for slice 8:
 - Implemented: each creator campaign now receives a quality report with verified claims, CRC paid/pending, X reads, settlement success, removed actions, average/median claimant trust, trust coverage, trust bands, and direct/indirect/no-link/unknown backer split.
 - Implemented: campaign cards in `My boosts` include a collapsible `Campaign quality report` section that opens by default once claims exist.
 - To test: run several claims on a creator campaign and confirm the report matches Neon data and feels understandable.
+- Current status: `To test`.
+
+Decision log for slice 10:
+
+- Decided: creator reputation should be a public shareable page, linked from the Creator dashboard.
+- Implemented: `/garage/creator/[id]` accepts a Circles profile slug or wallet address.
+- Implemented: the page shows creator Circles identity, X account when linked, trust/backer status, campaigns funded, CRC paid/pending, wallets reached, settlement success, claimant trust quality, backer split, and campaign history.
+- Implemented: Creator dashboard includes a `View creator profile` link that uses the Circles name when available, otherwise the wallet address.
+- To test: open the creator page from production, verify `cryptosnf` resolution, and compare totals against creator dashboard data.
 - Current status: `To test`.
 
 ## Trust Score Integration
