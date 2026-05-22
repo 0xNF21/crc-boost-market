@@ -2922,48 +2922,33 @@ function GarageLeaderboard({
           entries.map((entry, index) => {
             const profile = profiles[entry.walletAddress.toLowerCase()];
             const displayName = profile?.name || (entry.xUsername ? `@${entry.xUsername}` : shortAddress(entry.walletAddress));
-            const pendingText = entry.crcPending > 0 ? ` + ${formatNumber(entry.crcPending)} pending` : "";
             const trustValue = trustSummaryValue(entry.trustProfile);
 
             return (
               <div
                 key={entry.walletAddress}
-                className="grid gap-4 rounded-md border border-ink/10 bg-[#f0ede5] p-4 dark:border-white/10 dark:bg-white/5 sm:grid-cols-[minmax(0,1fr)_auto]"
+                className="flex flex-col gap-3 rounded-md border border-ink/10 bg-[#f0ede5] px-4 py-3 dark:border-white/10 dark:bg-white/5 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="flex min-w-0 items-center gap-3">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-ink text-xs font-black text-white dark:bg-white dark:text-ink">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-ink text-xs font-black text-white dark:bg-white dark:text-ink">
                     {index + 1}
                   </span>
                   {profile?.imageUrl ? (
                     <img
                       src={profile.imageUrl}
                       alt={displayName}
-                      className="h-11 w-11 shrink-0 rounded-full border border-ink/10 object-cover dark:border-white/10"
+                      className="h-10 w-10 shrink-0 rounded-full border border-ink/10 object-cover dark:border-white/10"
                     />
                   ) : (
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-ink/10 bg-[#fbfaf6] text-sm font-black text-ink/45 dark:border-white/10 dark:bg-white/10 dark:text-white/45">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-ink/10 bg-[#fbfaf6] text-sm font-black text-ink/45 dark:border-white/10 dark:bg-white/10 dark:text-white/45">
                       {displayName.slice(0, 1).toUpperCase()}
                     </span>
                   )}
                   <div className="min-w-0">
-                    <p className="truncate font-display text-lg font-black leading-tight">{displayName}</p>
-                    {entry.trustProfile ? (
-                      <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-black">
-                        <BackerStatusBadge status={entry.trustProfile.backerStatus} size="compact" />
-                        {trustValue ? (
-                          <span className="rounded-full bg-ink/6 px-3 py-1 uppercase text-ink/55 dark:bg-white/10 dark:text-white/60">
-                            Trust {trustValue}
-                          </span>
-                        ) : null}
-                        {entry.trustProfile.mutualCount > 0 ? (
-                          <span className="rounded-full bg-ink/6 px-3 py-1 uppercase text-ink/55 dark:bg-white/10 dark:text-white/60">
-                            {formatNumber(entry.trustProfile.mutualCount)} mutual
-                          </span>
-                        ) : null}
-                      </div>
-                    ) : null}
-                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-bold text-ink/45 dark:text-white/45">
-                      <span>Circles {shortAddress(entry.walletAddress)}</span>
+                    <p className="truncate font-display text-base font-black leading-tight sm:max-w-[220px]">
+                      {displayName}
+                    </p>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-bold text-ink/45 dark:text-white/45">
                       {entry.xUsername && (
                         <a
                           href={`https://x.com/${entry.xUsername}`}
@@ -2975,15 +2960,30 @@ function GarageLeaderboard({
                           <ExternalLink className="h-3 w-3" />
                         </a>
                       )}
-                      {entry.lastClaimAt && <span>last {formatDateTime(entry.lastClaimAt)}</span>}
+                      <span>{shortAddress(entry.walletAddress)}</span>
+                      {entry.lastClaimAt && <span>{formatDateTime(entry.lastClaimAt)}</span>}
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 text-center sm:min-w-[240px]">
-                  <MiniStat label="Earned" value={`${formatNumber(entry.crcEarned)} CRC${pendingText}`} />
-                  <MiniStat label="Actions" value={formatNumber(entry.actions)} />
-                  <MiniStat label="Reads" value={formatNumber(entry.xReads)} />
+                <div className="flex flex-wrap items-center gap-2 text-[11px] font-black uppercase sm:justify-end">
+                  {entry.trustProfile ? (
+                    <BackerStatusBadge status={entry.trustProfile.backerStatus} size="compact" />
+                  ) : (
+                    <span className="rounded-full bg-ink/6 px-3 py-1.5 text-ink/50 dark:bg-white/10 dark:text-white/55">
+                      Status pending
+                    </span>
+                  )}
+                  {trustValue ? (
+                    <span className="rounded-full bg-ink/6 px-3 py-1.5 text-ink/60 dark:bg-white/10 dark:text-white/65">
+                      Trust {trustValue}
+                    </span>
+                  ) : null}
+                  {entry.trustProfile?.mutualCount ? (
+                    <span className="rounded-full bg-ink/6 px-3 py-1.5 text-ink/60 dark:bg-white/10 dark:text-white/65">
+                      {formatNumber(entry.trustProfile.mutualCount)} mutual
+                    </span>
+                  ) : null}
                 </div>
               </div>
             );

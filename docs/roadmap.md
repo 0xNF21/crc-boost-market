@@ -41,7 +41,7 @@ For every slice, keep a short decision log:
 
 ## Progress Tracker
 
-Current next step: `5. Settlement duration rules`.
+Current next step: `6. Campaign ranking`.
 
 | # | Slice | Status | Validation criteria |
 |---|---|---|---|
@@ -49,7 +49,7 @@ Current next step: `5. Settlement duration rules`.
 | 2 | Public profile badges | Validated | Profile, leaderboard, and creator areas show trust/backer badges without making new users feel punished. |
 | 3 | Dynamic creator fees | Validated | Campaign creation fee changes according to creator trust score and backer status. |
 | 4 | Creator payment preview | Validated | Creator sees reward pool, NF Society fee, discount/premium reason, and total due before paying. |
-| 5 | Settlement duration rules | To test | Claim settlement duration is set per claimant based on the wallet trust score and backer status. |
+| 5 | Settlement duration rules | Validated | Claim settlement duration is set per claimant based on the wallet trust score and backer status. |
 | 6 | Campaign ranking | Todo | Live boosts use creator trust/backer signals as one ranking factor. |
 | 7 | Referral quality tiers | Todo | Referral rewards can vary by invited wallet quality while keeping the current milestones. |
 | 8 | Campaign quality report | Todo | Creator dashboard explains claimant quality, settlement success, CRC spent, and X reads used. |
@@ -83,8 +83,8 @@ Decision log for slice 5:
 - Implemented: verification endpoint sets each claim's `payoutAvailableAt` from the claiming wallet trust/backer profile.
 - Implemented: boost UI shows the current user's settlement window, while creator preview says settlement is user-based.
 - Validated product decision: keep the claimant settlement grid as direct `2/3/4 min`, indirect `5/6/7 min`, and no-backer `8/9/10 min`.
-- To test: claim a campaign with the current direct/high wallet and confirm the first settlement window is 2 minutes.
-- Current status: `To test`.
+- Tested: a direct/high wallet claim showed `2 min for you`, opened a settlement countdown, and kept payout locked until the re-check.
+- Final status: `Validated`.
 
 ## Trust Score Integration
 

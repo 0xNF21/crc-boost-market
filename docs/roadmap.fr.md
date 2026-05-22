@@ -41,7 +41,7 @@ Pour chaque brique, garder un mini journal de décision :
 
 ## Suivi D'avancement
 
-Prochaine étape actuelle : `5. Règles de settlement`.
+Prochaine étape actuelle : `6. Ranking des campagnes`.
 
 | # | Brique | Statut | Critère de validation |
 |---|---|---|---|
@@ -49,7 +49,7 @@ Prochaine étape actuelle : `5. Règles de settlement`.
 | 2 | Badges publics profil | Validé | Le profil, le leaderboard et les zones créateur affichent les badges trust/backer sans punir visuellement les nouveaux users. |
 | 3 | Fees créateur dynamiques | Validé | La fee de création change selon le trust score et le backer status du créateur. |
 | 4 | Preview paiement créateur | Validé | Le créateur voit reward pool, fee NF Society, raison du discount/premium, et total à payer avant paiement. |
-| 5 | Règles de settlement | À tester | La durée de settlement est fixée par claimant selon le trust score et le backer status du wallet qui claim. |
+| 5 | Règles de settlement | Validé | La durée de settlement est fixée par claimant selon le trust score et le backer status du wallet qui claim. |
 | 6 | Ranking des campagnes | À faire | Les boosts live utilisent le trust/backer du créateur comme un facteur de ranking. |
 | 7 | Tiers de qualité referral | À faire | Les rewards referral peuvent varier selon la qualité du wallet invité tout en gardant les milestones actuels. |
 | 8 | Campaign quality report | À faire | Le creator dashboard explique la qualité des claimants, le succès settlement, les CRC dépensés et les X reads utilisés. |
@@ -83,8 +83,8 @@ Journal de décision pour la brique 5 :
 - Implémenté : l'endpoint de vérification fixe `payoutAvailableAt` selon le profil trust/backer du wallet qui claim.
 - Implémenté : l'UI Boosts affiche la fenêtre de settlement du user actuel, pendant que la preview créateur indique que le settlement est user-based.
 - Décision produit validée : garder la grille claimant settlement en direct `2/3/4 min`, indirect `5/6/7 min`, et sans backer `8/9/10 min`.
-- À tester : claim une campagne avec le wallet direct/high actuel et confirmer que la première fenêtre de settlement est de 2 minutes.
-- Statut actuel : `À tester`.
+- Testé : un claim direct/high a affiché `2 min for you`, lancé un compte à rebours de settlement, et gardé le payout verrouillé jusqu'au re-check.
+- Statut final : `Validé`.
 
 ## Intégration Du Trust Score
 
