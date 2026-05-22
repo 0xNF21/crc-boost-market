@@ -15,6 +15,7 @@ import {
   Copy,
   ExternalLink,
   Info,
+  LogOut,
   MousePointerClick,
   Loader2,
   Megaphone,
@@ -620,7 +621,7 @@ function creatorProfilePath(address: string | null | undefined, profile?: Circle
 }
 
 export default function CirclesGaragePage() {
-  const { isAuthenticated, address, loading, openLogin } = useAuthSession();
+  const { isAuthenticated, address, loading, refresh, logout, openLogin } = useAuthSession();
   const { isMiniApp, walletAddress: miniAppWalletAddress, sendPayment } = useMiniApp();
   const [status, setStatus] = useState<GarageXStatus>(EMPTY_STATUS);
   const [referrals, setReferrals] = useState<GarageReferralStatus>(EMPTY_REFERRALS);
@@ -770,6 +771,24 @@ export default function CirclesGaragePage() {
       setLoadingData(false);
     }
   }, []);
+
+  const syncGarage = useCallback(async () => {
+    if (!loading && profileAddress && !isAuthenticated) {
+      openLogin();
+      return;
+    }
+
+    await refresh();
+    await loadData();
+  }, [isAuthenticated, loadData, loading, openLogin, profileAddress, refresh]);
+
+  const disconnectWallet = useCallback(async () => {
+    await logout();
+    setNoticeTone("success");
+    setNoticeTxHash(null);
+    setNotice("Wallet session disconnected.");
+    await loadData();
+  }, [loadData, logout]);
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -1533,6 +1552,17 @@ export default function CirclesGaragePage() {
           )}
           <span className="min-w-0 truncate text-xs sm:text-sm">{loading ? "loading" : circlesDisplayName}</span>
         </button>
+        {isAuthenticated && (
+          <button
+            type="button"
+            onClick={() => void disconnectWallet()}
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-ink/10 bg-white/80 text-ink/65 shadow-[0_18px_55px_-32px_rgba(20,20,24,0.75)] backdrop-blur-xl transition hover:border-red-500/25 hover:bg-red-50 hover:text-red-700 dark:border-white/10 dark:bg-[#202024]/90 dark:text-white/70 dark:hover:bg-red-500/15 dark:hover:text-red-200"
+            title="Disconnect wallet"
+            aria-label="Disconnect wallet"
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       <section className="garage-header sticky top-0 z-30 border-b border-ink/10 bg-sand/90 pt-14 backdrop-blur-xl dark:border-white/10 dark:bg-[#0a0a0a]/90 sm:pt-0">
@@ -1562,7 +1592,7 @@ export default function CirclesGaragePage() {
                 </span>
                 <button
                   type="button"
-                  onClick={loadData}
+                  onClick={() => void syncGarage()}
                   className="inline-flex h-8 items-center justify-center gap-1.5 rounded-xl border border-ink/10 bg-[#fbfaf6]/70 px-2.5 text-[10px] font-black uppercase tracking-[0.12em] text-ink/65 transition hover:bg-white dark:border-white/10 dark:bg-white/10 dark:text-white/70 dark:hover:bg-white/20"
                 >
                   <RefreshCw className={`h-3.5 w-3.5 ${loadingData ? "animate-spin" : ""}`} />
@@ -1996,11 +2026,23 @@ export default function CirclesGaragePage() {
                 </p>
                 <h2 className="mt-1 font-display text-xl font-black">Personal dashboard</h2>
               </div>
-              {status.linkedAccount && (
-                <span className="rounded-md bg-citrus/10 px-3 py-1 text-xs font-black text-citrus">
-                  @{status.linkedAccount.username}
-                </span>
-              )}
+              <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                {status.linkedAccount && (
+                  <span className="rounded-md bg-citrus/10 px-3 py-1 text-xs font-black text-citrus">
+                    @{status.linkedAccount.username}
+                  </span>
+                )}
+                {isAuthenticated && (
+                  <button
+                    type="button"
+                    onClick={() => void disconnectWallet()}
+                    className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-ink/10 bg-[#f0ede5] px-3 text-xs font-black text-ink/60 transition hover:border-red-500/25 hover:bg-red-50 hover:text-red-700 dark:border-white/10 dark:bg-white/10 dark:text-white/65 dark:hover:bg-red-500/15 dark:hover:text-red-200"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                    Disconnect
+                  </button>
+                )}
+              </div>
             </div>
 
             {isAuthenticated ? (
@@ -2209,11 +2251,19 @@ export default function CirclesGaragePage() {
                   Share this Circles-name link. When a new wallet connects from it and completes verified boost missions, you unlock referral CRC for that invited user.
                 </p>
                 {profileAddress && !referrals.authenticated && (
-                  <div className="mt-4 rounded-lg border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm font-bold text-amber-800 dark:text-amber-100">
-                    Referral stats need an authenticated wallet session. Reconnect this wallet, then Sync.
+                  <div className="mt-4 flex flex-col gap-3 rounded-lg border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm font-bold text-amber-800 dark:text-amber-100 sm:flex-row sm:items-center sm:justify-between">
+                    <span>Referral stats need an authenticated wallet session.</span>
+                    <button
+                      type="button"
+                      onClick={openLogin}
+                      className="inline-flex h-9 shrink-0 items-center justify-center gap-2 rounded-md bg-amber-700 px-3 text-xs font-black uppercase tracking-[0.08em] text-white transition hover:bg-amber-800 dark:bg-amber-200 dark:text-amber-950 dark:hover:bg-amber-100"
+                    >
+                      <Wallet className="h-3.5 w-3.5" />
+                      Reconnect
+                    </button>
                   </div>
                 )}
-                {referrals.unavailable && (
+                {referrals.unavailable && (referrals.authenticated || !profileAddress) && (
                   <div className="mt-4 rounded-lg border border-rose-500/25 bg-rose-500/10 px-4 py-3 text-sm font-bold text-rose-800 dark:text-rose-100">
                     Referral stats are temporarily unavailable. Sync again in a moment.
                   </div>

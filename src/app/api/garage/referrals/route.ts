@@ -45,12 +45,23 @@ function normalizeBackerStatus(value: unknown) {
   return value === "direct" || value === "indirect" || value === "none" ? value : "unknown";
 }
 
+function toIsoString(value: unknown): string {
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === "string" || typeof value === "number") {
+    const date = new Date(value);
+    if (!Number.isNaN(date.getTime())) return date.toISOString();
+  }
+  return new Date(0).toISOString();
+}
+
 export async function GET(req: NextRequest) {
   const limited = await enforceRateLimit(req, "garage-referrals-read", 60, 60_000);
   if (limited) return limited;
 
+  let address: string | null = null;
+
   try {
-    const address = await getAuthenticatedAddress(req).catch(() => null);
+    address = await getAuthenticatedAddress(req).catch(() => null);
 
     const [global] = await db
       .select({
@@ -123,7 +134,7 @@ export async function GET(req: NextRequest) {
         id: row.id,
         referrerAddress: row.referrerAddress,
         referredAddress: row.referredAddress,
-        createdAt: row.createdAt.toISOString(),
+        createdAt: toIsoString(row.createdAt),
       }));
 
       const referredAddresses = rows
@@ -273,7 +284,7 @@ export async function GET(req: NextRequest) {
         return {
           id: row.id,
           referredAddress,
-          createdAt: row.createdAt.toISOString(),
+          createdAt: toIsoString(row.createdAt),
           missions: claims.missions,
           xReads: claims.xReads,
           lastMissionAt: claims.lastMissionAt,
@@ -317,8 +328,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         cycle: GARAGE_REFERRAL_CYCLE,
-        authenticated: false,
-        address: null,
+        authenticated: Boolean(address),
+        address: address?.toLowerCase() ?? null,
         global: { total: 0, referrers: 0, wallets: 0 },
         mine: { total: 0 },
         rewards: { crcEarned: 0, claimableCrc: 0, pendingCrc: 0, activatedWallets: 0 },

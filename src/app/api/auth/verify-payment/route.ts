@@ -182,6 +182,7 @@ export async function POST(req: NextRequest) {
       authenticated: true,
       address: verifyResult.address,
       expiresAt: session.expiresAt.toISOString(),
+      sessionToken: session.token,
     });
     setAuthCookie(res, session.token, { expiresAt: session.expiresAt });
     return res;

@@ -283,6 +283,7 @@ export function AuthConnectModal({ open, onClose }: AuthConnectModalProps) {
 
         if (data?.status === "confirmed" || data?.authenticated) {
           clearPendingChallenge();
+          writeClientAuthToken(data?.sessionToken);
           await refresh();
           setStep({ kind: "success" });
           setTimeout(() => {

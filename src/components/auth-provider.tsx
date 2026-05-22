@@ -95,6 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           expiresAt: data.expiresAt ?? null,
         });
       } else {
+        clearClientAuthToken();
         setSession(EMPTY);
       }
     } catch (err) {
