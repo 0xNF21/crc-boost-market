@@ -123,10 +123,25 @@ Base referral milestones:
 
 The final referral reward uses a quality multiplier based on the invited wallet:
 
-- direct backers can receive the strongest multiplier;
-- indirect backers receive a medium multiplier;
-- no-backer or low-trust profiles can receive a lower multiplier;
+- `high trust` means trust score `>= 70`;
+- `medium trust` means trust score `>= 40`;
+- `low trust` means trust score `< 40` or no usable score yet;
+- every referral payout has a `0.1 CRC` minimum after multiplier;
 - rewards become claimable balance, then the referrer claims grouped CRC when they choose.
+
+Referral quality multiplier grid:
+
+| Invited wallet status | High trust | Medium trust | Low / no score |
+|---|---:|---:|---:|
+| Direct backer | 1.5x | 1.3x | 1.15x |
+| Indirect backer | 1.25x | 1.1x | 1x |
+| No backer link | 1x | 0.85x | 0.7x |
+
+Examples:
+
+- `0.2 CRC` first-mission bonus from a direct high-trust invited wallet becomes `0.3 CRC`.
+- `1 CRC` five-mission bonus from an indirect medium-trust invited wallet becomes `1.1 CRC`.
+- `0.2 CRC` first-mission bonus from a no-backer low-trust invited wallet becomes `0.14 CRC`.
 
 ## Creator Reputation
 
