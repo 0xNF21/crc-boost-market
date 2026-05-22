@@ -82,6 +82,7 @@ Journal de décision pour la brique 5 :
 - Implémenté : matrice claimant commune : direct high `2 min`, direct medium `3 min`, direct low `4 min`, indirect high `5 min`, indirect medium `6 min`, indirect low `7 min`, sans backer high `8 min`, sans backer medium `9 min`, sans backer low `10 min`.
 - Implémenté : l'endpoint de vérification fixe `payoutAvailableAt` selon le profil trust/backer du wallet qui claim.
 - Implémenté : l'UI Boosts affiche la fenêtre de settlement du user actuel, pendant que la preview créateur indique que le settlement est user-based.
+- Décision produit validée : garder la grille claimant settlement en direct `2/3/4 min`, indirect `5/6/7 min`, et sans backer `8/9/10 min`.
 - À tester : claim une campagne avec le wallet direct/high actuel et confirmer que la première fenêtre de settlement est de 2 minutes.
 - Statut actuel : `À tester`.
 

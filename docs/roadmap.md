@@ -82,6 +82,7 @@ Decision log for slice 5:
 - Implemented: shared claimant settlement matrix: direct high `2 min`, direct medium `3 min`, direct low `4 min`, indirect high `5 min`, indirect medium `6 min`, indirect low `7 min`, no-backer high `8 min`, no-backer medium `9 min`, no-backer low `10 min`.
 - Implemented: verification endpoint sets each claim's `payoutAvailableAt` from the claiming wallet trust/backer profile.
 - Implemented: boost UI shows the current user's settlement window, while creator preview says settlement is user-based.
+- Validated product decision: keep the claimant settlement grid as direct `2/3/4 min`, indirect `5/6/7 min`, and no-backer `8/9/10 min`.
 - To test: claim a campaign with the current direct/high wallet and confirm the first settlement window is 2 minutes.
 - Current status: `To test`.
 
