@@ -22,7 +22,7 @@ const appUrl = getCrcBoostPublicUrl();
 const appName = "CRC Boosts by NF-Society";
 const appDescription = "A Circles-native attention market where creators fund CRC rewards for verified X actions.";
 const socialDescription = "Creators fund CRC rewards for verified X attention. Users earn CRC after settlement.";
-const socialImage = "/opengraph-image";
+const socialImage = "/crc-boost-preview.png";
 
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
