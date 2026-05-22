@@ -116,7 +116,7 @@ export async function GET(req: NextRequest) {
         cycle: GARAGE_REFERRAL_CYCLE,
         global: { total: 0, referrers: 0, wallets: 0 },
         mine: { total: 0 },
-        rewards: { crcEarned: 0, pendingCrc: 0, activatedWallets: 0 },
+        rewards: { crcEarned: 0, claimableCrc: 0, pendingCrc: 0, activatedWallets: 0 },
         milestones: GARAGE_REFERRAL_REWARD_MILESTONES,
         qualityMultipliers: GARAGE_REFERRAL_QUALITY_GRID,
         minRewardCrc: GARAGE_REFERRAL_MIN_REWARD_CRC,

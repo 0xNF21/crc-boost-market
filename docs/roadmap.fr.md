@@ -100,8 +100,9 @@ Journal de décision pour la brique 7 :
 - Implémenté : grille de multiplicateur par backer status et trust score : direct `1.5x / 1.3x / 1.15x`, indirect `1.25x / 1.1x / 1x`, sans backer `1x / 0.85x / 0.7x`.
 - Implémenté : les payouts referral stockent montant de base, multiplicateur, montant final, trust score du wallet invité, trust level, et backer status.
 - Implémenté : la zone referral du profil affiche une bulle informative avec la grille et le payout minimum.
+- Mis à jour : les milestones referral créent maintenant un solde claimable au lieu de micro-payouts automatiques ; le referrer peut claim un payout groupé quand il veut.
 - Migration : `0002_referral_quality_multiplier` appliquée sur Neon.
-- À tester : inviter un wallet, compléter les milestones referral, et confirmer que le payout final utilise le multiplicateur du wallet invité.
+- À tester : inviter un wallet, compléter les milestones referral, confirmer que le solde claimable utilise le multiplicateur du wallet invité, puis claim le payout groupé.
 - Statut actuel : `À tester`.
 
 ## Intégration Du Trust Score

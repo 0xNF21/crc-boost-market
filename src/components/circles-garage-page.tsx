@@ -159,6 +159,7 @@ type GarageReferralStatus = {
   };
   rewards: {
     crcEarned: number;
+    claimableCrc: number;
     pendingCrc: number;
     activatedWallets: number;
   };
@@ -251,7 +252,7 @@ const EMPTY_REFERRALS: GarageReferralStatus = {
   minRewardCrc: GARAGE_REFERRAL_MIN_REWARD_CRC,
   global: { total: 0, referrers: 0, wallets: 0 },
   mine: { total: 0 },
-  rewards: { crcEarned: 0, pendingCrc: 0, activatedWallets: 0 },
+  rewards: { crcEarned: 0, claimableCrc: 0, pendingCrc: 0, activatedWallets: 0 },
   recent: [],
 };
 
@@ -534,6 +535,7 @@ export default function CirclesGaragePage() {
   const [campaignsUnavailable, setCampaignsUnavailable] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const [trustRefreshing, setTrustRefreshing] = useState(false);
+  const [referralClaiming, setReferralClaiming] = useState(false);
   const [verifyingId, setVerifyingId] = useState<number | null>(null);
   const [fundingPayment, setFundingPayment] = useState<GarageCampaignFundingPayment | null>(null);
   const [fundingAction, setFundingAction] = useState<"pay" | "scan" | "cancel" | null>(null);
@@ -874,6 +876,44 @@ export default function CirclesGaragePage() {
       setTimeout(() => setCopied(false), 1500);
     } else {
       setCopied(false);
+    }
+  }
+
+  async function claimReferralBalance() {
+    if (!isAuthenticated) {
+      openLogin();
+      return;
+    }
+
+    setReferralClaiming(true);
+    setNotice(null);
+    setNoticeTxHash(null);
+    try {
+      const res = await fetch("/api/garage/referrals/claim", {
+        method: "POST",
+        cache: "no-store",
+        credentials: "include",
+        headers: clientAuthHeaders(),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.claimed) {
+        setNoticeTone("error");
+        setNoticeTxHash(null);
+        setNotice(data?.status === "nothing_claimable" ? "No referral CRC claimable yet." : data?.error ?? "Referral claim failed.");
+        await loadData();
+        return;
+      }
+
+      setNoticeTone("success");
+      setNoticeTxHash(typeof data?.txHash === "string" ? data.txHash : null);
+      setNotice(`Referral CRC claim started for ${formatNumber(Number(data.amountCrc ?? 0))} CRC.`);
+      await loadData();
+    } catch {
+      setNoticeTone("error");
+      setNoticeTxHash(null);
+      setNotice("Referral claim failed.");
+    } finally {
+      setReferralClaiming(false);
     }
   }
 
@@ -1952,7 +1992,7 @@ export default function CirclesGaragePage() {
                 </p>
                 <h2 className="font-display text-xl font-black">Referral link</h2>
                 <p className="mt-1 text-sm font-bold text-ink/45 dark:text-white/45">
-                  {formatNumber(referrals.mine.total)} invited - {formatNumber(referrals.rewards.activatedWallets)} activated - {formatNumber(referrals.rewards.crcEarned)} CRC bonus
+                  {formatNumber(referrals.mine.total)} invited - {formatNumber(referrals.rewards.activatedWallets)} activated - {formatNumber(referrals.rewards.claimableCrc)} CRC claimable
                 </p>
               </div>
               <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-ink/10 bg-[#f0ede5] text-ink/70 dark:border-white/10 dark:bg-white/10 dark:text-white/75">
@@ -1978,10 +2018,40 @@ export default function CirclesGaragePage() {
                 <p className="mt-3 text-sm font-bold leading-6 text-ink/55 dark:text-white/58">
                   Share this Circles-name link. When a new wallet connects from it and completes verified boost missions, you unlock referral CRC for that invited user.
                 </p>
-                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   <MiniStat label="Invited" value={formatNumber(referrals.mine.total)} />
                   <MiniStat label="Activated" value={formatNumber(referrals.rewards.activatedWallets)} />
-                  <MiniStat label="Bonus" value={`${formatNumber(referrals.rewards.crcEarned)} CRC`} />
+                  <MiniStat label="Claimable" value={`${formatNumber(referrals.rewards.claimableCrc)} CRC`} />
+                  <MiniStat label="Claimed" value={`${formatNumber(referrals.rewards.crcEarned)} CRC`} />
+                </div>
+                <div className="mt-4 rounded-lg border border-ink/10 bg-[#f0ede5] p-4 dark:border-white/10 dark:bg-white/5">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.16em] text-ink/45 dark:text-white/45">
+                        Referral balance
+                      </p>
+                      <p className="mt-1 font-display text-xl font-black">
+                        {formatNumber(referrals.rewards.claimableCrc)} CRC claimable
+                      </p>
+                      <p className="mt-1 text-xs font-bold leading-5 text-ink/50 dark:text-white/50">
+                        Referral rewards accumulate here. Claim when you want one grouped payout.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void claimReferralBalance()}
+                      disabled={referralClaiming || referrals.rewards.claimableCrc <= 0}
+                      className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-ink px-4 text-sm font-black text-white transition hover:bg-ink/90 disabled:cursor-not-allowed disabled:opacity-55 dark:bg-white dark:text-ink"
+                    >
+                      {referralClaiming ? <Loader2 className="h-4 w-4 animate-spin" /> : <CircleDollarSign className="h-4 w-4" />}
+                      Claim referral CRC
+                    </button>
+                  </div>
+                  {referrals.rewards.pendingCrc > 0 && (
+                    <p className="mt-3 text-xs font-bold text-ink/50 dark:text-white/50">
+                      {formatNumber(referrals.rewards.pendingCrc)} CRC referral claim in progress.
+                    </p>
+                  )}
                 </div>
                 <div className="mt-5 min-w-0 rounded-lg border border-ink/10 bg-[#f0ede5] p-4 dark:border-white/10 dark:bg-white/5">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -2057,11 +2127,6 @@ export default function CirclesGaragePage() {
                     If the same invited wallet reaches 5 verified missions, the 1, 3, and 5 mission bonuses all unlock.
                   </p>
                 </div>
-                {referrals.rewards.pendingCrc > 0 && (
-                  <p className="mt-3 text-xs font-bold text-ink/50 dark:text-white/50">
-                    {formatNumber(referrals.rewards.pendingCrc)} CRC referral bonus pending.
-                  </p>
-                )}
               </div>
             )}
           </div>

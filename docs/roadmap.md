@@ -100,8 +100,9 @@ Decision log for slice 7:
 - Implemented: multiplier grid by backer status and trust score: direct `1.5x / 1.3x / 1.15x`, indirect `1.25x / 1.1x / 1x`, no-backer `1x / 0.85x / 0.7x`.
 - Implemented: referral payouts store base amount, quality multiplier, final amount, invited wallet trust score, trust level, and backer status.
 - Implemented: profile referral area includes an info bubble with the multiplier grid and minimum payout.
+- Updated: referral milestones now create claimable balance instead of automatic micro-payouts; referrers can claim grouped CRC when they choose.
 - Migration: `0002_referral_quality_multiplier` applied to Neon.
-- To test: invite a wallet, complete referral milestones, and confirm the final payout uses the invited wallet multiplier.
+- To test: invite a wallet, complete referral milestones, confirm the claimable balance uses the invited wallet multiplier, then claim the grouped payout.
 - Current status: `To test`.
 
 ## Trust Score Integration
