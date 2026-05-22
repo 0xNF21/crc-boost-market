@@ -1574,9 +1574,9 @@ export default function CirclesGaragePage() {
         )}
       </div>
 
-      <section className="garage-header sticky top-0 z-30 border-b border-ink/10 bg-sand/90 pt-16 backdrop-blur-xl dark:border-white/10 dark:bg-[#0a0a0a]/90 min-[1120px]:pt-0">
+      <section className="garage-header sticky top-0 z-30 border-b border-ink/10 bg-sand/90 pt-16 backdrop-blur-xl dark:border-white/10 dark:bg-[#0a0a0a]/90 sm:pt-3 min-[1120px]:pt-0">
         <div className="mx-auto grid max-w-7xl gap-3 px-4 py-3 min-[1120px]:grid-cols-[minmax(220px,1fr)_auto_minmax(220px,1fr)] min-[1120px]:items-center">
-          <div className="relative min-w-0 justify-self-start">
+          <div className="order-2 relative min-w-0 justify-self-start min-[1120px]:order-none">
             <div className="rounded-2xl border border-ink/10 bg-[#f0ede5]/95 p-1.5 text-ink shadow-[0_18px_42px_-34px_rgba(37,27,159,0.45)] backdrop-blur-xl dark:border-white/10 dark:bg-[#19171d]/95 dark:text-white dark:shadow-[0_18px_42px_-34px_rgba(0,0,0,0.72)]">
               <div className="flex items-center gap-1.5">
                 <button
@@ -1641,7 +1641,7 @@ export default function CirclesGaragePage() {
               )}
             </div>
           </div>
-          <Link href="/" className="flex items-center justify-self-center gap-3.5 min-[1120px]:justify-self-center">
+          <Link href="/" className="order-1 flex items-center justify-self-start gap-3.5 min-[1120px]:order-none min-[1120px]:justify-self-center">
             <Image
               src="/crc-boost-icon.png"
               alt="CRC Boost"
