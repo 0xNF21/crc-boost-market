@@ -42,8 +42,8 @@ export const metadata: Metadata = {
     images: [
       {
         url: socialImage,
-        width: 1200,
-        height: 630,
+        width: 1672,
+        height: 941,
         alt: "CRC Boosts attention market",
       },
     ],
