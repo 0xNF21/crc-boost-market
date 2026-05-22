@@ -50,7 +50,7 @@ Prochaine étape actuelle : `6. Ranking des campagnes`.
 | 3 | Fees créateur dynamiques | Validé | La fee de création change selon le trust score et le backer status du créateur. |
 | 4 | Preview paiement créateur | Validé | Le créateur voit reward pool, fee NF Society, raison du discount/premium, et total à payer avant paiement. |
 | 5 | Règles de settlement | Validé | La durée de settlement est fixée par claimant selon le trust score et le backer status du wallet qui claim. |
-| 6 | Ranking des campagnes | À faire | Les boosts live utilisent le trust/backer du créateur comme un facteur de ranking. |
+| 6 | Ranking des campagnes | À tester | Les boosts live utilisent le trust/backer du créateur comme un facteur de ranking. |
 | 7 | Tiers de qualité referral | À faire | Les rewards referral peuvent varier selon la qualité du wallet invité tout en gardant les milestones actuels. |
 | 8 | Campaign quality report | À faire | Le creator dashboard explique la qualité des claimants, le succès settlement, les CRC dépensés et les X reads utilisés. |
 | 9 | Intelligent fee split | À faire | L'allocation de fee est configurable et visible dans la preview paiement créateur. |
@@ -85,6 +85,14 @@ Journal de décision pour la brique 5 :
 - Décision produit validée : garder la grille claimant settlement en direct `2/3/4 min`, indirect `5/6/7 min`, et sans backer `8/9/10 min`.
 - Testé : un claim direct/high a affiché `2 min for you`, lancé un compte à rebours de settlement, et gardé le payout verrouillé jusqu'au re-check.
 - Statut final : `Validé`.
+
+Journal de décision pour la brique 6 :
+
+- Décidé : les boosts live ne doivent pas être ordonnés seulement par date de création.
+- Implémenté : le ranking combine statut actif, reward par action, slots ouverts, fraîcheur, et trust/backer status du créateur en cache.
+- Implémenté : les cards boost affichent des raisons compactes comme `Direct creator`, `High trust creator`, `Good reward`, `Open slots`, ou `Fresh boost`.
+- À tester : comparer plusieurs campagnes live en production et confirmer que l'ordre et les raisons de ranking sont compréhensibles.
+- Statut actuel : `À tester`.
 
 ## Intégration Du Trust Score
 

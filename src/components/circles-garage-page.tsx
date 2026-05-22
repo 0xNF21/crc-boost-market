@@ -184,6 +184,13 @@ type GarageXCampaign = {
     remainingClaims: number;
     spentCrc: number;
   };
+  ranking?: {
+    score: number;
+    reasons: string[];
+    creatorTrustScore: number | null;
+    creatorTrustLevel: string | null;
+    creatorBackerStatus: string | null;
+  };
   claimedByMe?: {
     status: string;
     verificationEvidence: string | null;
@@ -1620,6 +1627,9 @@ export default function CirclesGaragePage() {
 
           {garageSection === "boosts" && (
             <div className="space-y-6">
+          <div className="rounded-lg border border-ink/10 bg-[#fbfaf6] px-5 py-4 text-sm font-bold leading-6 text-ink/58 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-white/60">
+            Live boosts are ranked by reward, open slots, freshness, and creator trust.
+          </div>
           <div className="grid gap-5 rounded-lg border border-ink/10 bg-[#f7f7fa] p-5 shadow-sm dark:border-white/10 dark:bg-white/5 md:grid-cols-3">
             <FlowStep
               icon={MousePointerClick}
@@ -3042,6 +3052,7 @@ function CampaignCard({
   const claimProgress = campaign.maxClaims > 0
     ? Math.min(100, Math.round((campaign.stats.claims / campaign.maxClaims) * 100))
     : 0;
+  const rankingReasons = campaign.ranking?.reasons ?? [];
 
   return (
     <article className="overflow-hidden rounded-lg border border-ink/10 bg-[#fbfaf6] shadow-[0_18px_48px_-38px_rgba(0,0,0,0.35)] dark:border-white/10 dark:bg-white/5">
@@ -3062,6 +3073,14 @@ function CampaignCard({
             <span className="rounded-md bg-ink/5 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-ink/50 dark:bg-white/10 dark:text-white/55">
               {formatNumber(campaign.stats.remainingClaims)} left
             </span>
+            {rankingReasons.map((reason) => (
+              <span
+                key={reason}
+                className="rounded-md bg-marine/10 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-marine dark:bg-sky-300/10 dark:text-sky-300"
+              >
+                {reason}
+              </span>
+            ))}
           </div>
           <h2 className="mt-4 font-display text-3xl font-black tracking-tight">{campaign.title}</h2>
           {campaign.description && (

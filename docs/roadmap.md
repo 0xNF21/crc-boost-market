@@ -50,7 +50,7 @@ Current next step: `6. Campaign ranking`.
 | 3 | Dynamic creator fees | Validated | Campaign creation fee changes according to creator trust score and backer status. |
 | 4 | Creator payment preview | Validated | Creator sees reward pool, NF Society fee, discount/premium reason, and total due before paying. |
 | 5 | Settlement duration rules | Validated | Claim settlement duration is set per claimant based on the wallet trust score and backer status. |
-| 6 | Campaign ranking | Todo | Live boosts use creator trust/backer signals as one ranking factor. |
+| 6 | Campaign ranking | To test | Live boosts use creator trust/backer signals as one ranking factor. |
 | 7 | Referral quality tiers | Todo | Referral rewards can vary by invited wallet quality while keeping the current milestones. |
 | 8 | Campaign quality report | Todo | Creator dashboard explains claimant quality, settlement success, CRC spent, and X reads used. |
 | 9 | Intelligent fee split | Todo | Fee allocation is configurable and visible in the creator payment preview. |
@@ -85,6 +85,14 @@ Decision log for slice 5:
 - Validated product decision: keep the claimant settlement grid as direct `2/3/4 min`, indirect `5/6/7 min`, and no-backer `8/9/10 min`.
 - Tested: a direct/high wallet claim showed `2 min for you`, opened a settlement countdown, and kept payout locked until the re-check.
 - Final status: `Validated`.
+
+Decision log for slice 6:
+
+- Decided: live boosts should not be ordered only by creation date.
+- Implemented: campaign ranking combines active status, reward per action, open slots, freshness, and cached creator trust/backer status.
+- Implemented: boost cards show compact ranking reasons such as `Direct creator`, `High trust creator`, `Good reward`, `Open slots`, or `Fresh boost`.
+- To test: compare several live campaigns in production and confirm the ordering and ranking reasons feel understandable.
+- Current status: `To test`.
 
 ## Trust Score Integration
 

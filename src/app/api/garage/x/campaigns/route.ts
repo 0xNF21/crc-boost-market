@@ -17,6 +17,7 @@ import {
   normalizeTweetUrl,
   normalizeXAction,
   parseTweetId,
+  rankGarageCampaigns,
 } from "@/lib/garage-x";
 
 function slugify(value: string) {
@@ -117,20 +118,45 @@ export async function GET(req: NextRequest) {
         ]),
     );
 
-    const publicCampaigns = await Promise.all(
-      campaigns.map(async (campaign) => ({
-        ...campaignToPublic(
-          campaign,
-          { claims: claimCountByCampaign.get(campaign.id) ?? 0 },
-          ownByCampaign.get(campaign.id) ?? null,
-        ),
-        fundingPayment:
-          address &&
-          campaign.status === "pending_payment" &&
-          campaign.createdByAddress?.toLowerCase() === address.toLowerCase()
-            ? await getGarageCampaignFundingPaymentWithQr(campaign)
-            : null,
-      })),
+    const creatorWallets = [
+      ...new Set(
+        campaigns
+          .map((campaign) => campaign.createdByAddress?.toLowerCase())
+          .filter((wallet): wallet is string => Boolean(wallet)),
+      ),
+    ];
+    const creatorTrustRows = creatorWallets.length
+      ? await db
+          .select({
+            walletAddress: garageTrustProfiles.walletAddress,
+            trustScore: garageTrustProfiles.trustScore,
+            trustLevel: garageTrustProfiles.trustLevel,
+            backerStatus: garageTrustProfiles.backerStatus,
+          })
+          .from(garageTrustProfiles)
+          .where(inArray(garageTrustProfiles.walletAddress, creatorWallets))
+      : [];
+    const creatorTrustByWallet = new Map(
+      creatorTrustRows.map((row) => [row.walletAddress.toLowerCase(), row]),
+    );
+
+    const publicCampaigns = rankGarageCampaigns(
+      await Promise.all(
+        campaigns.map(async (campaign) => ({
+          ...campaignToPublic(
+            campaign,
+            { claims: claimCountByCampaign.get(campaign.id) ?? 0 },
+            ownByCampaign.get(campaign.id) ?? null,
+          ),
+          fundingPayment:
+            address &&
+            campaign.status === "pending_payment" &&
+            campaign.createdByAddress?.toLowerCase() === address.toLowerCase()
+              ? await getGarageCampaignFundingPaymentWithQr(campaign)
+              : null,
+        })),
+      ),
+      creatorTrustByWallet,
     );
 
     return NextResponse.json({

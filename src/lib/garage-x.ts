@@ -1,4 +1,4 @@
-import type { GarageXCampaign } from "@/lib/db/schema";
+import type { GarageTrustProfile, GarageXCampaign } from "@/lib/db/schema";
 import QRCode from "qrcode";
 import { generateGamePaymentLink } from "@/lib/circles";
 
@@ -41,6 +41,7 @@ export type PublicGarageXCampaign = {
     remainingClaims: number;
     spentCrc: number;
   };
+  ranking: GarageCampaignRanking;
   claimedByMe?: {
     status: string;
     verificationEvidence: string | null;
@@ -51,6 +52,14 @@ export type PublicGarageXCampaign = {
     createdAt: string;
   } | null;
   fundingPayment?: GarageCampaignFundingPayment | null;
+};
+
+export type GarageCampaignRanking = {
+  score: number;
+  reasons: string[];
+  creatorTrustScore: number | null;
+  creatorTrustLevel: string | null;
+  creatorBackerStatus: string | null;
 };
 
 export type GarageCampaignFundingPayment = {
@@ -90,6 +99,13 @@ export const SEEDED_GARAGE_X_CAMPAIGN: PublicGarageXCampaign = {
     claims: 0,
     remainingClaims: 50,
     spentCrc: 0,
+  },
+  ranking: {
+    score: 0,
+    reasons: ["Garage seed boost"],
+    creatorTrustScore: null,
+    creatorTrustLevel: null,
+    creatorBackerStatus: null,
   },
 };
 
@@ -224,6 +240,101 @@ function campaignFeeBpsFromStoredAmounts(campaign: Pick<GarageXCampaign, "budget
   return Math.round((platformFeeCrc * 10_000) / rewardPoolCrc);
 }
 
+function trustLevelWeight(level: string | null | undefined) {
+  const normalized = (level || "").toUpperCase();
+  if (normalized === "HIGH") return 35;
+  if (normalized === "MEDIUM") return 18;
+  if (normalized === "LOW") return 6;
+  return 0;
+}
+
+function backerWeight(status: string | null | undefined) {
+  if (status === "direct") return 90;
+  if (status === "indirect") return 50;
+  if (status === "none") return 10;
+  return 0;
+}
+
+function rewardWeight(rewardCrc: number) {
+  return Math.min(160, Math.max(0, rewardCrc) * 24);
+}
+
+function remainingSlotsWeight(remainingClaims: number, maxClaims: number) {
+  if (remainingClaims <= 0) return -500;
+  const openRatio = maxClaims > 0 ? remainingClaims / maxClaims : 0;
+  return Math.round(Math.min(120, remainingClaims * 4) + openRatio * 40);
+}
+
+function freshnessWeight(createdAt: string) {
+  const ageHours = Math.max(0, (Date.now() - new Date(createdAt).getTime()) / 3_600_000);
+  if (!Number.isFinite(ageHours)) return 0;
+  return Math.round(Math.max(0, 96 - ageHours));
+}
+
+function pushUniqueReason(reasons: string[], reason: string) {
+  if (!reasons.includes(reason)) reasons.push(reason);
+}
+
+export function getGarageCampaignRanking(
+  campaign: PublicGarageXCampaign,
+  creatorTrust: Pick<GarageTrustProfile, "trustScore" | "trustLevel" | "backerStatus"> | null | undefined,
+): GarageCampaignRanking {
+  const creatorBackerStatus = creatorTrust?.backerStatus ?? null;
+  const creatorTrustScore = creatorTrust?.trustScore ?? null;
+  const creatorTrustLevel = creatorTrust?.trustLevel ?? null;
+  const remaining = Number(campaign.stats.remainingClaims || 0);
+  const reasons: string[] = [];
+
+  const score =
+    (campaign.status === "active" ? 10_000 : campaign.status === "pending_payment" ? 1_000 : 0) +
+    rewardWeight(campaign.rewardCrc) +
+    remainingSlotsWeight(remaining, campaign.maxClaims) +
+    freshnessWeight(campaign.createdAt) +
+    backerWeight(creatorBackerStatus) +
+    trustLevelWeight(creatorTrustLevel);
+
+  if (creatorBackerStatus === "direct") pushUniqueReason(reasons, "Direct creator");
+  if (creatorBackerStatus === "indirect") pushUniqueReason(reasons, "Indirect creator");
+  if (creatorTrustLevel === "HIGH") pushUniqueReason(reasons, "High trust creator");
+  if (campaign.rewardCrc >= 5) pushUniqueReason(reasons, "High reward");
+  else if (campaign.rewardCrc >= 1) pushUniqueReason(reasons, "Good reward");
+
+  const fillPercent = campaign.maxClaims > 0
+    ? Math.round((campaign.stats.claims / campaign.maxClaims) * 100)
+    : 0;
+  if (fillPercent >= 80 && remaining > 0) pushUniqueReason(reasons, "Almost filled");
+  else if (remaining >= 5) pushUniqueReason(reasons, "Open slots");
+
+  if (freshnessWeight(campaign.createdAt) >= 48) pushUniqueReason(reasons, "Fresh boost");
+  if (!reasons.length) pushUniqueReason(reasons, "Live boost");
+
+  return {
+    score,
+    reasons: reasons.slice(0, 3),
+    creatorTrustScore,
+    creatorTrustLevel,
+    creatorBackerStatus,
+  };
+}
+
+export function rankGarageCampaigns(
+  campaigns: PublicGarageXCampaign[],
+  creatorTrustByWallet: Map<string, Pick<GarageTrustProfile, "trustScore" | "trustLevel" | "backerStatus">>,
+) {
+  return campaigns
+    .map((campaign) => {
+      const creatorWallet = campaign.createdByAddress?.toLowerCase() ?? "";
+      return {
+        ...campaign,
+        ranking: getGarageCampaignRanking(campaign, creatorTrustByWallet.get(creatorWallet)),
+      };
+    })
+    .sort((a, b) => {
+      if (b.ranking.score !== a.ranking.score) return b.ranking.score - a.ranking.score;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+}
+
 export function getGarageCampaignFundingPayment(campaign: Pick<
   GarageXCampaign,
   "id" | "slug" | "budgetCrc" | "fundingRequiredCrc" | "platformFeeCrc" | "createdByAddress"
@@ -341,6 +452,13 @@ export function campaignToPublic(
       claims,
       remainingClaims: Math.max(0, hardMaxClaims - claims),
       spentCrc: Math.round(claims * rewardCrc * 100) / 100,
+    },
+    ranking: {
+      score: 0,
+      reasons: ["Live boost"],
+      creatorTrustScore: null,
+      creatorTrustLevel: null,
+      creatorBackerStatus: null,
     },
     claimedByMe: claimedByMe ?? null,
   };
