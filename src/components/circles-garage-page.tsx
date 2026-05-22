@@ -141,6 +141,8 @@ type GarageReferralStatus = {
   cycle: string;
   authenticated: boolean;
   address: string | null;
+  statsAddress: string | null;
+  readOnly: boolean;
   milestones: Array<{ threshold: number; amountCrc: number }>;
   qualityMultipliers: ReadonlyArray<{
     status: GarageBackerStatus;
@@ -301,6 +303,8 @@ const EMPTY_REFERRALS: GarageReferralStatus = {
   cycle: "cycle-01",
   authenticated: false,
   address: null,
+  statsAddress: null,
+  readOnly: false,
   milestones: [
     { threshold: 1, amountCrc: 0.2 },
     { threshold: 3, amountCrc: 0.5 },
@@ -678,6 +682,8 @@ export default function CirclesGaragePage() {
     const profileCode = referralCodeFromProfileName(myProfile?.name);
     return `/garage/creator/${encodeURIComponent(profileCode || profileAddress.toLowerCase())}`;
   }, [myProfile?.name, profileAddress]);
+  const referralStatsForProfile =
+    Boolean(profileAddress) && referrals.statsAddress?.toLowerCase() === profileAddress?.toLowerCase();
 
   const creatorFeeTier = useMemo(
     () => getGarageCreatorFeeTier(trustProfile, status.settings.campaignFeeBps),
@@ -724,10 +730,13 @@ export default function CirclesGaragePage() {
   const loadData = useCallback(async () => {
     setLoadingData(true);
     try {
+      const referralsUrl = profileAddress
+        ? `/api/garage/referrals?address=${encodeURIComponent(profileAddress.toLowerCase())}`
+        : "/api/garage/referrals";
       const [statusResult, campaignsResult, referralsResult, trustResult] = await Promise.allSettled([
         fetch("/api/garage/x/status", { cache: "no-store", credentials: "include", headers: clientAuthHeaders() }),
         fetch("/api/garage/x/campaigns", { cache: "no-store", credentials: "include", headers: clientAuthHeaders() }),
-        fetch("/api/garage/referrals", { cache: "no-store", credentials: "include", headers: clientAuthHeaders() }),
+        fetch(referralsUrl, { cache: "no-store", credentials: "include", headers: clientAuthHeaders() }),
         fetch("/api/garage/trust/status", { cache: "no-store", credentials: "include", headers: clientAuthHeaders() }),
       ]);
 
@@ -770,7 +779,7 @@ export default function CirclesGaragePage() {
     } finally {
       setLoadingData(false);
     }
-  }, []);
+  }, [profileAddress]);
 
   const syncGarage = useCallback(async () => {
     if (!loading && profileAddress && !isAuthenticated) {
@@ -2250,7 +2259,7 @@ export default function CirclesGaragePage() {
                 <p className="mt-3 text-sm font-bold leading-6 text-ink/55 dark:text-white/58">
                   Share this Circles-name link. When a new wallet connects from it and completes verified boost missions, you unlock referral CRC for that invited user.
                 </p>
-                {profileAddress && !referrals.authenticated && (
+                {profileAddress && !referrals.authenticated && !referralStatsForProfile && (
                   <div className="mt-4 flex flex-col gap-3 rounded-lg border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm font-bold text-amber-800 dark:text-amber-100 sm:flex-row sm:items-center sm:justify-between">
                     <span>Referral stats need an authenticated wallet session.</span>
                     <button

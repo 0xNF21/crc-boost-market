@@ -59,9 +59,12 @@ export async function GET(req: NextRequest) {
   if (limited) return limited;
 
   let address: string | null = null;
+  let authenticatedAddress: string | null = null;
 
   try {
-    address = await getAuthenticatedAddress(req).catch(() => null);
+    authenticatedAddress = await getAuthenticatedAddress(req).catch(() => null);
+    const requestedAddress = normalizeAddress(req.nextUrl.searchParams.get("address"));
+    address = requestedAddress ?? authenticatedAddress;
 
     const [global] = await db
       .select({
@@ -308,8 +311,10 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       cycle: GARAGE_REFERRAL_CYCLE,
-      authenticated: Boolean(address),
-      address: address?.toLowerCase() ?? null,
+      authenticated: Boolean(authenticatedAddress),
+      address: authenticatedAddress?.toLowerCase() ?? null,
+      statsAddress: address?.toLowerCase() ?? null,
+      readOnly: !authenticatedAddress && Boolean(address),
       milestones: GARAGE_REFERRAL_REWARD_MILESTONES,
       qualityMultipliers: GARAGE_REFERRAL_QUALITY_GRID,
       minRewardCrc: GARAGE_REFERRAL_MIN_REWARD_CRC,
@@ -328,8 +333,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         cycle: GARAGE_REFERRAL_CYCLE,
-        authenticated: Boolean(address),
-        address: address?.toLowerCase() ?? null,
+        authenticated: Boolean(authenticatedAddress),
+        address: authenticatedAddress?.toLowerCase() ?? null,
+        statsAddress: address?.toLowerCase() ?? null,
+        readOnly: !authenticatedAddress && Boolean(address),
         global: { total: 0, referrers: 0, wallets: 0 },
         mine: { total: 0 },
         rewards: { crcEarned: 0, claimableCrc: 0, pendingCrc: 0, activatedWallets: 0 },
