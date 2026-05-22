@@ -219,6 +219,7 @@ type GarageXCampaign = {
     remainingClaims: number;
     spentCrc: number;
   };
+  qualityReport: GarageCampaignQualityReport | null;
   ranking?: {
     score: number;
     reasons: string[];
@@ -236,6 +237,36 @@ type GarageXCampaign = {
     createdAt: string;
   } | null;
   fundingPayment?: GarageCampaignFundingPayment | null;
+};
+
+type GarageCampaignQualityReport = {
+  totalClaims: number;
+  verifiedClaims: number;
+  paidClaims: number;
+  pendingSettlementClaims: number;
+  removedActionClaims: number;
+  payoutFailedClaims: number;
+  xReads: number;
+  crcPaid: number;
+  crcPending: number;
+  costPerVerifiedClaim: number | null;
+  costPerPaidClaim: number | null;
+  settlementSuccessRate: number | null;
+  averageTrustScore: number | null;
+  medianTrustScore: number | null;
+  trustCoverage: number;
+  trustBands: {
+    high: number;
+    medium: number;
+    low: number;
+    unknown: number;
+  };
+  backerSplit: {
+    direct: number;
+    indirect: number;
+    none: number;
+    unknown: number;
+  };
 };
 
 type GarageCampaignFundingPayment = {
@@ -310,6 +341,11 @@ function formatPercentFromBps(value: number | null | undefined) {
 function formatMultiplier(value: number | null | undefined) {
   if (value == null || !Number.isFinite(value)) return "1x";
   return `${formatNumber(value)}x`;
+}
+
+function formatPercentValue(value: number | null | undefined) {
+  if (value == null || !Number.isFinite(value)) return "Pending";
+  return `${formatNumber(value)}%`;
 }
 
 function formatTrustValue(score: number | null | undefined, level: string | null | undefined) {
@@ -2787,6 +2823,124 @@ function creatorCampaignTone(campaign: GarageXCampaign) {
   return "bg-citrus/10 text-citrus";
 }
 
+function qualityReportSummary(report: GarageCampaignQualityReport | null | undefined) {
+  if (!report || report.totalClaims <= 0) return "No claims yet";
+  const success = report.settlementSuccessRate === null ? "settlement pending" : `${formatNumber(report.settlementSuccessRate)}% settled`;
+  return `${formatNumber(report.verifiedClaims)} verified - ${success} - ${formatNumber(report.xReads)} X reads`;
+}
+
+function QualitySplitRow({
+  label,
+  value,
+  total,
+  tone = "bg-marine",
+}: {
+  label: string;
+  value: number;
+  total: number;
+  tone?: string;
+}) {
+  const percent = total > 0 ? Math.round((value / total) * 100) : 0;
+
+  return (
+    <div className="grid gap-1.5">
+      <div className="flex items-center justify-between gap-3 text-[11px] font-black uppercase tracking-[0.1em] text-ink/48 dark:text-white/50">
+        <span>{label}</span>
+        <span>{formatNumber(value)} / {formatNumber(percent)}%</span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-ink/10 dark:bg-white/10">
+        <div className={`h-full rounded-full ${tone}`} style={{ width: `${percent}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function CampaignQualityReportPanel({ report }: { report: GarageCampaignQualityReport | null | undefined }) {
+  if (!report) return null;
+  const hasClaims = report.totalClaims > 0;
+  const trustValue =
+    report.averageTrustScore === null
+      ? "No score"
+      : `${formatNumber(report.averageTrustScore)} avg / ${formatNumber(report.medianTrustScore)} med`;
+  const paidOrPendingCrc = report.crcPending > 0
+    ? `${formatNumber(report.crcPaid)} CRC paid + ${formatNumber(report.crcPending)} pending`
+    : `${formatNumber(report.crcPaid)} CRC`;
+
+  return (
+    <details
+      open={hasClaims}
+      className="group mt-4 rounded-lg border border-ink/10 bg-[#fbfaf6] p-4 dark:border-white/10 dark:bg-black/20"
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left [&::-webkit-details-marker]:hidden">
+        <div className="min-w-0">
+          <p className="text-[10px] font-black uppercase tracking-[0.16em] text-ink/45 dark:text-white/45">
+            Campaign quality report
+          </p>
+          <p className="mt-1 text-sm font-black text-ink dark:text-white">
+            {qualityReportSummary(report)}
+          </p>
+        </div>
+        <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-ink/10 bg-[#f0ede5] text-ink/70 dark:border-white/10 dark:bg-white/10 dark:text-white/75">
+          <ChevronDown className="h-4 w-4 transition group-open:rotate-180" />
+        </span>
+      </summary>
+
+      {hasClaims ? (
+        <div className="mt-4 space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <MiniStat label="Verified claims" value={formatNumber(report.verifiedClaims)} />
+            <MiniStat label="Settlement success" value={formatPercentValue(report.settlementSuccessRate)} />
+            <MiniStat label="CRC paid" value={paidOrPendingCrc} />
+            <MiniStat label="X reads" value={formatNumber(report.xReads)} />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <MiniStat label="Trust score" value={trustValue} />
+            <MiniStat label="Trust coverage" value={formatPercentValue(report.trustCoverage)} />
+            <MiniStat label="Cost / verified" value={report.costPerVerifiedClaim === null ? "-" : `${formatNumber(report.costPerVerifiedClaim)} CRC`} />
+            <MiniStat label="Removed actions" value={formatNumber(report.removedActionClaims)} />
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="rounded-md border border-ink/10 bg-[#f0ede5] p-3 dark:border-white/10 dark:bg-white/5">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-ink/45 dark:text-white/45">
+                Backer split
+              </p>
+              <div className="mt-3 grid gap-3">
+                <QualitySplitRow label="Direct" value={report.backerSplit.direct} total={report.totalClaims} tone="bg-emerald-500" />
+                <QualitySplitRow label="Indirect" value={report.backerSplit.indirect} total={report.totalClaims} tone="bg-marine" />
+                <QualitySplitRow label="No link" value={report.backerSplit.none} total={report.totalClaims} tone="bg-citrus" />
+                <QualitySplitRow label="Unknown" value={report.backerSplit.unknown} total={report.totalClaims} tone="bg-ink/40 dark:bg-white/40" />
+              </div>
+            </div>
+
+            <div className="rounded-md border border-ink/10 bg-[#f0ede5] p-3 dark:border-white/10 dark:bg-white/5">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-ink/45 dark:text-white/45">
+                Trust bands
+              </p>
+              <div className="mt-3 grid gap-3">
+                <QualitySplitRow label="High 70+" value={report.trustBands.high} total={report.totalClaims} tone="bg-emerald-500" />
+                <QualitySplitRow label="Medium 40-69" value={report.trustBands.medium} total={report.totalClaims} tone="bg-marine" />
+                <QualitySplitRow label="Low <40" value={report.trustBands.low} total={report.totalClaims} tone="bg-citrus" />
+                <QualitySplitRow label="No score" value={report.trustBands.unknown} total={report.totalClaims} tone="bg-ink/40 dark:bg-white/40" />
+              </div>
+            </div>
+          </div>
+
+          {(report.pendingSettlementClaims > 0 || report.payoutFailedClaims > 0) && (
+            <p className="text-xs font-bold leading-5 text-ink/50 dark:text-white/52">
+              {formatNumber(report.pendingSettlementClaims)} claim(s) still in settlement and {formatNumber(report.payoutFailedClaims)} payout failure(s) are separated from removed actions.
+            </p>
+          )}
+        </div>
+      ) : (
+        <p className="mt-3 rounded-md border border-ink/10 bg-[#f0ede5] p-3 text-sm font-bold text-ink/52 dark:border-white/10 dark:bg-white/5 dark:text-white/55">
+          Quality data appears after users start verifying this boost.
+        </p>
+      )}
+    </details>
+  );
+}
+
 function CreatorDashboard({
   campaigns,
   isAuthenticated,
@@ -2999,6 +3153,8 @@ function CreatorDashboard({
                         <div className="h-full rounded-full bg-marine transition-all" style={{ width: `${fill}%` }} />
                       </div>
                     </div>
+
+                    <CampaignQualityReportPanel report={campaign.qualityReport} />
 
                     {funding && (
                       <div className="mt-4 rounded-lg border border-marine/20 bg-marine/10 p-4 dark:border-sky-300/20 dark:bg-sky-300/10">

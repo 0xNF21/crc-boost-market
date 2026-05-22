@@ -41,7 +41,7 @@ For every slice, keep a short decision log:
 
 ## Progress Tracker
 
-Current next step: `6. Campaign ranking`.
+Current next step: `8. Campaign quality report validation`.
 
 | # | Slice | Status | Validation criteria |
 |---|---|---|---|
@@ -52,7 +52,7 @@ Current next step: `6. Campaign ranking`.
 | 5 | Settlement duration rules | Validated | Claim settlement duration is set per claimant based on the wallet trust score and backer status. |
 | 6 | Campaign ranking | To test | Live boosts use creator trust/backer signals as one ranking factor. |
 | 7 | Referral quality tiers | To test | Referral rewards can vary by invited wallet quality while keeping the current milestones. |
-| 8 | Campaign quality report | Todo | Creator dashboard explains claimant quality, settlement success, CRC spent, and X reads used. |
+| 8 | Campaign quality report | To test | Creator dashboard explains claimant quality, settlement success, CRC spent, and X reads used. |
 | 9 | Intelligent fee split | Todo | Fee allocation is configurable and visible in the creator payment preview. |
 | 10 | Creator reputation page | Todo | A creator can show campaigns funded, CRC paid, quality stats, and trust/backer status. |
 | 11 | Market health dashboard | Todo | Market status includes trust/backer distribution, not only raw claims and payouts. |
@@ -104,6 +104,14 @@ Decision log for slice 7:
 - Implemented: profile referral area includes an invited-wallet tracking drawer with missions, CRC state, multiplier, trust score, and backer status per referral.
 - Migration: `0002_referral_quality_multiplier` applied to Neon.
 - To test: invite a wallet, complete referral milestones, confirm the claimable balance uses the invited wallet multiplier, then claim the grouped payout.
+- Current status: `To test`.
+
+Decision log for slice 8:
+
+- Decided: ship the report as an aggregate creator-dashboard surface first, without per-user claimant details.
+- Implemented: each creator campaign now receives a quality report with verified claims, CRC paid/pending, X reads, settlement success, removed actions, average/median claimant trust, trust coverage, trust bands, and direct/indirect/no-link/unknown backer split.
+- Implemented: campaign cards in `My boosts` include a collapsible `Campaign quality report` section that opens by default once claims exist.
+- To test: run several claims on a creator campaign and confirm the report matches Neon data and feels understandable.
 - Current status: `To test`.
 
 ## Trust Score Integration

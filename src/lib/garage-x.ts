@@ -41,6 +41,7 @@ export type PublicGarageXCampaign = {
     remainingClaims: number;
     spentCrc: number;
   };
+  qualityReport: GarageCampaignQualityReport | null;
   ranking: GarageCampaignRanking;
   claimedByMe?: {
     status: string;
@@ -52,6 +53,36 @@ export type PublicGarageXCampaign = {
     createdAt: string;
   } | null;
   fundingPayment?: GarageCampaignFundingPayment | null;
+};
+
+export type GarageCampaignQualityReport = {
+  totalClaims: number;
+  verifiedClaims: number;
+  paidClaims: number;
+  pendingSettlementClaims: number;
+  removedActionClaims: number;
+  payoutFailedClaims: number;
+  xReads: number;
+  crcPaid: number;
+  crcPending: number;
+  costPerVerifiedClaim: number | null;
+  costPerPaidClaim: number | null;
+  settlementSuccessRate: number | null;
+  averageTrustScore: number | null;
+  medianTrustScore: number | null;
+  trustCoverage: number;
+  trustBands: {
+    high: number;
+    medium: number;
+    low: number;
+    unknown: number;
+  };
+  backerSplit: {
+    direct: number;
+    indirect: number;
+    none: number;
+    unknown: number;
+  };
 };
 
 export type GarageCampaignRanking = {
@@ -100,6 +131,7 @@ export const SEEDED_GARAGE_X_CAMPAIGN: PublicGarageXCampaign = {
     remainingClaims: 50,
     spentCrc: 0,
   },
+  qualityReport: null,
   ranking: {
     score: 0,
     reasons: ["Garage seed boost"],
@@ -453,6 +485,7 @@ export function campaignToPublic(
       remainingClaims: Math.max(0, hardMaxClaims - claims),
       spentCrc: Math.round(claims * rewardCrc * 100) / 100,
     },
+    qualityReport: null,
     ranking: {
       score: 0,
       reasons: ["Live boost"],
