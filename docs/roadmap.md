@@ -120,6 +120,7 @@ Decision log for slice 10:
 - Implemented: `/garage/creator/[id]` accepts a Circles profile slug or wallet address.
 - Implemented: the page shows creator Circles identity, X account when linked, trust/backer status, campaigns funded, CRC paid/pending, wallets reached, settlement success, claimant trust quality, backer split, and campaign history.
 - Implemented: Creator dashboard includes a `View creator profile` link that uses the Circles name when available, otherwise the wallet address.
+- Implemented: live boost cards and leaderboard rows now link visible Circles identities to the creator reputation page.
 - To test: open the creator page from production, verify `cryptosnf` resolution, and compare totals against creator dashboard data.
 - Current status: `To test`.
 

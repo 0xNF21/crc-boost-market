@@ -120,6 +120,7 @@ Journal de décision pour la brique 10 :
 - Implémenté : `/garage/creator/[id]` accepte un slug de profil Circles ou une adresse wallet.
 - Implémenté : la page affiche identité Circles, compte X lié si disponible, trust/backer status, campagnes financées, CRC payés/en attente, wallets touchés, succès settlement, qualité trust des claimants, split backer et historique des campagnes.
 - Implémenté : le Creator dashboard inclut un lien `View creator profile` qui utilise le nom Circles quand il existe, sinon l'adresse wallet.
+- Implémenté : les cards de boosts live et les lignes du leaderboard lient maintenant les identités Circles visibles vers la page réputation créateur.
 - À tester : ouvrir la page créateur en production, vérifier la résolution `cryptosnf`, et comparer les totaux avec le creator dashboard.
 - Statut actuel : `À tester`.
 

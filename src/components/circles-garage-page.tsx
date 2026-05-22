@@ -353,6 +353,10 @@ function formatTrustValue(score: number | null | undefined, level: string | null
   return level ? `${score} / ${level}` : String(score);
 }
 
+function normalizedBackerStatus(value: string | null | undefined): GarageBackerStatus {
+  return value === "direct" || value === "indirect" || value === "none" ? value : "unknown";
+}
+
 function referralActivityLabel(status: GarageReferralActivity["status"]) {
   if (status === "claimable") return "Claimable";
   if (status === "claiming") return "Claiming";
@@ -605,6 +609,12 @@ function referralCodeFromProfileName(name: string | null | undefined): string {
     .slice(0, 48);
 }
 
+function creatorProfilePath(address: string | null | undefined, profile?: CirclesProfile | null) {
+  if (!isAddress(address)) return null;
+  const profileCode = referralCodeFromProfileName(profile?.name);
+  return `/garage/creator/${encodeURIComponent(profileCode || address.toLowerCase())}`;
+}
+
 export default function CirclesGaragePage() {
   const { isAuthenticated, address, loading, openLogin } = useAuthSession();
   const { isMiniApp, walletAddress: miniAppWalletAddress, sendPayment } = useMiniApp();
@@ -633,6 +643,7 @@ export default function CirclesGaragePage() {
   const [marketStatusOpen, setMarketStatusOpen] = useState(false);
   const [profileReferralOpen, setProfileReferralOpen] = useState(false);
   const [creatorFormOpen, setCreatorFormOpen] = useState(true);
+  const [campaignCreatorProfiles, setCampaignCreatorProfiles] = useState<Record<string, CirclesProfile>>({});
   const [leaderboardProfiles, setLeaderboardProfiles] = useState<Record<string, CirclesProfile>>({});
   const [referralProfiles, setReferralProfiles] = useState<Record<string, CirclesProfile>>({});
   const [myProfile, setMyProfile] = useState<CirclesProfile | null>(null);
@@ -855,6 +866,41 @@ export default function CirclesGaragePage() {
       cancelled = true;
     };
   }, [status.leaderboard]);
+
+  useEffect(() => {
+    const addresses = Array.from(
+      new Set(
+        campaigns
+          .map((campaign) => campaign.createdByAddress?.toLowerCase())
+          .filter(isAddress),
+      ),
+    );
+
+    if (!addresses.length) {
+      setCampaignCreatorProfiles({});
+      return;
+    }
+
+    let cancelled = false;
+    void fetch("/api/profiles", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ addresses }),
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled) {
+          setCampaignCreatorProfiles(data?.profiles ?? {});
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setCampaignCreatorProfiles({});
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [campaigns]);
 
   useEffect(() => {
     const addresses = Array.from(
@@ -1868,6 +1914,11 @@ export default function CirclesGaragePage() {
                 <CampaignCard
                   key={campaign.slug}
                   campaign={campaign}
+                  creatorProfile={
+                    campaign.createdByAddress
+                      ? campaignCreatorProfiles[campaign.createdByAddress.toLowerCase()] ?? null
+                      : null
+                  }
                   isMiniApp={isMiniApp}
                   showXLink={visibleXLinkCampaignId === campaign.id}
                   verifying={verifyingId === campaign.id}
@@ -3416,6 +3467,7 @@ function GarageLeaderboard({
           entries.map((entry, index) => {
             const profile = profiles[entry.walletAddress.toLowerCase()];
             const displayName = profile?.name || (entry.xUsername ? `@${entry.xUsername}` : shortAddress(entry.walletAddress));
+            const profileHref = creatorProfilePath(entry.walletAddress, profile);
             const trustValue = trustSummaryValue(entry.trustProfile);
             const pendingText = entry.crcPending > 0 ? ` + ${formatNumber(entry.crcPending)} pending` : "";
             const missionLabel = entry.actions === 1 ? "mission" : "missions";
@@ -3429,21 +3481,48 @@ function GarageLeaderboard({
                   <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-ink text-xs font-black text-white dark:bg-white dark:text-ink">
                     {index + 1}
                   </span>
-                  {profile?.imageUrl ? (
+                  {profileHref && profile?.imageUrl ? (
+                    <Link href={profileHref} className="shrink-0 rounded-full">
+                      <img
+                        src={profile.imageUrl}
+                        alt={displayName}
+                        className="h-10 w-10 rounded-full border border-ink/10 object-cover transition hover:border-marine/40 dark:border-white/10"
+                      />
+                    </Link>
+                  ) : profile?.imageUrl ? (
                     <img
                       src={profile.imageUrl}
                       alt={displayName}
                       className="h-10 w-10 shrink-0 rounded-full border border-ink/10 object-cover dark:border-white/10"
                     />
                   ) : (
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-ink/10 bg-[#fbfaf6] text-sm font-black text-ink/45 dark:border-white/10 dark:bg-white/10 dark:text-white/45">
-                      {displayName.slice(0, 1).toUpperCase()}
-                    </span>
+                    profileHref ? (
+                      <Link
+                        href={profileHref}
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-ink/10 bg-[#fbfaf6] text-sm font-black text-ink/45 transition hover:border-marine/40 dark:border-white/10 dark:bg-white/10 dark:text-white/45"
+                      >
+                        {displayName.slice(0, 1).toUpperCase()}
+                      </Link>
+                    ) : (
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-ink/10 bg-[#fbfaf6] text-sm font-black text-ink/45 dark:border-white/10 dark:bg-white/10 dark:text-white/45">
+                        {displayName.slice(0, 1).toUpperCase()}
+                      </span>
+                    )
                   )}
                   <div className="min-w-0">
-                    <p className="truncate font-display text-base font-black leading-tight sm:max-w-[220px]">
-                      {displayName}
-                    </p>
+                    {profileHref ? (
+                      <Link
+                        href={profileHref}
+                        className="inline-flex max-w-full items-center gap-1.5 truncate font-display text-base font-black leading-tight text-ink transition hover:text-marine dark:text-white dark:hover:text-sky-300 sm:max-w-[220px]"
+                      >
+                        <span className="truncate">{displayName}</span>
+                        <ExternalLink className="h-3 w-3 shrink-0" />
+                      </Link>
+                    ) : (
+                      <p className="truncate font-display text-base font-black leading-tight sm:max-w-[220px]">
+                        {displayName}
+                      </p>
+                    )}
                     <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-bold text-ink/45 dark:text-white/45">
                       {entry.xUsername && (
                         <a
@@ -3506,8 +3585,64 @@ function GarageLeaderboard({
   );
 }
 
+function CampaignCreatorLink({
+  campaign,
+  profile,
+}: {
+  campaign: GarageXCampaign;
+  profile: CirclesProfile | null;
+}) {
+  const href = creatorProfilePath(campaign.createdByAddress, profile);
+  if (!href || !campaign.createdByAddress) return null;
+
+  const displayName = profile?.name?.trim() || shortAddress(campaign.createdByAddress);
+  const backerStatus = normalizedBackerStatus(campaign.ranking?.creatorBackerStatus);
+  const trustValue = formatTrustValue(campaign.ranking?.creatorTrustScore, campaign.ranking?.creatorTrustLevel);
+
+  return (
+    <Link
+      href={href}
+      className="group flex min-w-0 items-center gap-3 rounded-lg border border-ink/10 bg-[#f0ede5] p-2.5 text-left transition hover:border-marine/30 hover:bg-white dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
+    >
+      {profile?.imageUrl ? (
+        <img
+          src={profile.imageUrl}
+          alt={displayName}
+          className="h-10 w-10 shrink-0 rounded-full border border-ink/10 object-cover dark:border-white/10"
+        />
+      ) : (
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-ink/10 bg-[#fbfaf6] text-sm font-black text-ink/45 dark:border-white/10 dark:bg-white/10 dark:text-white/45">
+          {displayName.slice(0, 1).toUpperCase()}
+        </span>
+      )}
+      <span className="min-w-0">
+        <span className="block text-[10px] font-black uppercase tracking-[0.14em] text-ink/42 dark:text-white/42">
+          Created by
+        </span>
+        <span className="mt-0.5 flex min-w-0 items-center gap-1.5">
+          <span className="truncate font-display text-sm font-black text-ink group-hover:text-marine dark:text-white dark:group-hover:text-sky-300">
+            {displayName}
+          </span>
+          <ExternalLink className="h-3.5 w-3.5 shrink-0 text-ink/35 group-hover:text-marine dark:text-white/35 dark:group-hover:text-sky-300" />
+        </span>
+        <span className="mt-1 flex flex-wrap items-center gap-1.5">
+          <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase ${backerStatusTone(backerStatus)}`}>
+            {BACKER_STATUS_LABELS[backerStatus]}
+          </span>
+          {trustValue ? (
+            <span className="rounded-full bg-ink/6 px-2 py-0.5 text-[9px] font-black uppercase text-ink/55 dark:bg-white/10 dark:text-white/60">
+              Trust {trustValue}
+            </span>
+          ) : null}
+        </span>
+      </span>
+    </Link>
+  );
+}
+
 function CampaignCard({
   campaign,
+  creatorProfile,
   isMiniApp,
   showXLink,
   verifying,
@@ -3519,6 +3654,7 @@ function CampaignCard({
   feedback,
 }: {
   campaign: GarageXCampaign;
+  creatorProfile: CirclesProfile | null;
   isMiniApp: boolean;
   showXLink: boolean;
   verifying: boolean;
@@ -3570,16 +3706,18 @@ function CampaignCard({
             </p>
           )}
         </div>
-        {campaign.claimedByMe && (
-          <span className={`shrink-0 rounded-md px-3 py-1.5 text-xs font-black uppercase ${claimTone(campaign.claimedByMe.status)}`}>
-            {claimStatusLabel(campaign.claimedByMe.status)}
-          </span>
-        )}
-        {!campaign.claimedByMe && (
-          <span className="shrink-0 rounded-md bg-citrus/10 px-3 py-1.5 text-xs font-black uppercase tracking-[0.12em] text-citrus">
-            Live boost
-          </span>
-        )}
+        <div className="flex shrink-0 flex-col gap-3 lg:w-[280px] lg:items-stretch">
+          {campaign.claimedByMe ? (
+            <span className={`w-fit rounded-md px-3 py-1.5 text-xs font-black uppercase lg:ml-auto ${claimTone(campaign.claimedByMe.status)}`}>
+              {claimStatusLabel(campaign.claimedByMe.status)}
+            </span>
+          ) : (
+            <span className="w-fit rounded-md bg-citrus/10 px-3 py-1.5 text-xs font-black uppercase tracking-[0.12em] text-citrus lg:ml-auto">
+              Live boost
+            </span>
+          )}
+          <CampaignCreatorLink campaign={campaign} profile={creatorProfile} />
+        </div>
       </div>
       </div>
 
