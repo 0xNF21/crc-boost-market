@@ -2911,6 +2911,9 @@ function GarageLeaderboard({
             Leaderboard
           </p>
           <h2 className="mt-1 font-display text-xl font-black">Top Circles profiles</h2>
+          <p className="mt-1 text-sm font-bold leading-6 text-ink/52 dark:text-white/55">
+            Ranked by CRC earned, then verified missions.
+          </p>
         </div>
         <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-ink/10 bg-[#f0ede5] text-ink/70 dark:border-white/10 dark:bg-white/10 dark:text-white/75">
           <Trophy className="h-5 w-5" />
@@ -2923,6 +2926,8 @@ function GarageLeaderboard({
             const profile = profiles[entry.walletAddress.toLowerCase()];
             const displayName = profile?.name || (entry.xUsername ? `@${entry.xUsername}` : shortAddress(entry.walletAddress));
             const trustValue = trustSummaryValue(entry.trustProfile);
+            const pendingText = entry.crcPending > 0 ? ` + ${formatNumber(entry.crcPending)} pending` : "";
+            const missionLabel = entry.actions === 1 ? "mission" : "missions";
 
             return (
               <div
@@ -2967,6 +2972,12 @@ function GarageLeaderboard({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 text-[11px] font-black uppercase sm:justify-end">
+                  <span className="rounded-full bg-ink/6 px-3 py-1.5 text-ink/70 dark:bg-white/10 dark:text-white/75">
+                    {formatNumber(entry.crcEarned)} CRC earned{pendingText}
+                  </span>
+                  <span className="rounded-full bg-ink/6 px-3 py-1.5 text-ink/70 dark:bg-white/10 dark:text-white/75">
+                    {formatNumber(entry.actions)} {missionLabel}
+                  </span>
                   {entry.trustProfile ? (
                     <BackerStatusBadge status={entry.trustProfile.backerStatus} size="compact" />
                   ) : (
