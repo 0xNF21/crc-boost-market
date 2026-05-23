@@ -560,10 +560,12 @@ function BackerStatusBadge({
   const iconSrc = backerStatusIconSrc(status);
   const imageSize = size === "prominent" ? 40 : 28;
   const imageBoxClass = size === "prominent" ? "h-10 w-10" : "h-7 w-7";
+  const imageScaleClass = status === "indirect" ? "scale-[0.74]" : "scale-100";
+  const labelSizeClass = size === "prominent" ? "text-xs" : "text-[10px] tracking-[0.02em]";
   const badgeSizeClass =
     size === "prominent"
-      ? "min-h-12 min-w-[190px] px-3 py-1.5 text-xs"
-      : "h-10 min-w-[168px] px-2.5 py-0 text-[11px]";
+      ? "min-h-12 min-w-[190px] px-3 py-1.5"
+      : "h-10 min-w-[168px] px-2.5 py-0";
 
   return (
     <span
@@ -577,11 +579,11 @@ function BackerStatusBadge({
             width={imageSize}
             height={imageSize}
             aria-hidden="true"
-            className="h-full w-full object-contain"
+            className={`h-full w-full object-contain ${imageScaleClass}`}
           />
         </span>
       ) : null}
-      <span className="whitespace-nowrap">{BACKER_STATUS_LABELS[status]}</span>
+      <span className={`whitespace-nowrap ${labelSizeClass}`}>{BACKER_STATUS_LABELS[status]}</span>
     </span>
   );
 }
