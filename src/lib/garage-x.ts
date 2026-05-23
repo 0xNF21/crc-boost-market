@@ -626,11 +626,11 @@ function clampInteger(value: number, min: number, max: number) {
 }
 
 function timelineMaxResults() {
-  return clampInteger(Number(process.env.GARAGE_X_TIMELINE_MAX_RESULTS ?? 25), 5, 100);
+  return clampInteger(Number(process.env.GARAGE_X_TIMELINE_MAX_RESULTS ?? 10), 5, 100);
 }
 
 function retweetedByFallbackPages() {
-  return clampInteger(Number(process.env.GARAGE_X_RETWEETED_BY_FALLBACK_PAGES ?? 2), 0, 10);
+  return clampInteger(Number(process.env.GARAGE_X_RETWEETED_BY_FALLBACK_PAGES ?? 0), 0, 10);
 }
 
 async function findUserInPagedUsers(
