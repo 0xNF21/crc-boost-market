@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Activity,
@@ -390,12 +391,37 @@ function referralActivityLabel(status: GarageReferralActivity["status"]) {
   return "Waiting";
 }
 
-function referralActivityTone(status: GarageReferralActivity["status"]) {
-  if (status === "claimable") return "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300";
-  if (status === "claiming") return "bg-marine/10 text-marine dark:text-sky-300";
-  if (status === "claimed") return "bg-ink/8 text-ink/55 dark:bg-white/10 dark:text-white/60";
-  if (status === "missions_detected") return "bg-citrus/10 text-citrus";
-  return "bg-ink/6 text-ink/45 dark:bg-white/10 dark:text-white/50";
+type MetricPillTone = "neutral" | "muted" | "success" | "marine" | "citrus";
+
+function metricPillTone(tone: MetricPillTone) {
+  if (tone === "success") return "border-emerald-500/18 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300";
+  if (tone === "marine") return "border-marine/16 bg-marine/8 text-marine dark:border-sky-300/16 dark:bg-sky-300/10 dark:text-sky-300";
+  if (tone === "citrus") return "border-citrus/18 bg-citrus/10 text-citrus";
+  if (tone === "muted") return "border-ink/10 bg-[#f3eee7] text-ink/48 dark:border-white/10 dark:bg-white/8 dark:text-white/52";
+  return "border-ink/10 bg-[#f3eee7] text-ink/65 dark:border-white/10 dark:bg-white/8 dark:text-white/68";
+}
+
+function referralMetricTone(status: GarageReferralActivity["status"]): MetricPillTone {
+  if (status === "claimable") return "success";
+  if (status === "claiming") return "marine";
+  if (status === "missions_detected") return "citrus";
+  return status === "claimed" ? "neutral" : "muted";
+}
+
+function MetricPill({
+  children,
+  tone = "neutral",
+}: {
+  children: ReactNode;
+  tone?: MetricPillTone;
+}) {
+  return (
+    <span
+      className={`inline-flex h-10 max-w-full shrink-0 items-center justify-center rounded-full border px-3 text-[10px] font-black uppercase leading-none tracking-[0.02em] ${metricPillTone(tone)}`}
+    >
+      <span className="truncate whitespace-nowrap">{children}</span>
+    </span>
+  );
 }
 
 function roundCrc(value: number) {
@@ -2160,9 +2186,7 @@ export default function CirclesGaragePage() {
                       <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-black">
                         <BackerStatusBadge status={trustProfile.backerStatus} size="compact" />
                         {trustProfile.trustScore !== null ? (
-                          <span className="rounded-full bg-ink/6 px-3 py-1 uppercase text-ink/55 dark:bg-white/10 dark:text-white/60">
-                            Trust {trustProfile.trustScore}
-                          </span>
+                          <MetricPill tone="muted">Trust {trustProfile.trustScore}</MetricPill>
                         ) : null}
                       </div>
                     ) : null}
@@ -2206,14 +2230,14 @@ export default function CirclesGaragePage() {
                       </div>
                       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs font-black">
                         <BackerStatusBadge status={trustProfile.backerStatus} />
-                        <span className="rounded-full bg-ink/6 px-3 py-1 text-ink/55 dark:bg-white/10 dark:text-white/60">
+                        <MetricPill>
                           {trustProfile.directBacker
                             ? "Direct backing completed"
                             : `${formatNumber(trustProfile.indirectBackerTrustCount)} direct backer trusts`}
-                        </span>
-                        <span className="rounded-full bg-ink/6 px-3 py-1 text-ink/55 dark:bg-white/10 dark:text-white/60">
+                        </MetricPill>
+                        <MetricPill>
                           {formatNumber(trustProfile.inDegree)} in / {formatNumber(trustProfile.outDegree)} out
-                        </span>
+                        </MetricPill>
                       </div>
                       <p className="mt-3 text-[11px] font-bold text-ink/45 dark:text-white/45">
                         Last checked {formatDateTime(trustProfile.lastFetchedAt)}
@@ -3568,32 +3592,18 @@ function ReferralActivityList({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 text-[11px] font-black uppercase sm:justify-end">
-                  <span className={`rounded-full px-3 py-1.5 ${referralActivityTone(entry.status)}`}>
-                    {referralActivityLabel(entry.status)}
-                  </span>
-                  <span className="rounded-full bg-ink/6 px-3 py-1.5 text-ink/70 dark:bg-white/10 dark:text-white/75">
-                    {formatNumber(entry.missions)} {missionLabel}
-                  </span>
-                  <span className="rounded-full bg-ink/6 px-3 py-1.5 text-ink/70 dark:bg-white/10 dark:text-white/75">
-                    {crcLabel}
-                  </span>
-                  <span className="rounded-full bg-ink/6 px-3 py-1.5 text-ink/60 dark:bg-white/10 dark:text-white/65">
-                    {formatMultiplier(entry.qualityMultiplier)}
-                  </span>
+                  <MetricPill tone={referralMetricTone(entry.status)}>{referralActivityLabel(entry.status)}</MetricPill>
+                  <MetricPill>{formatNumber(entry.missions)} {missionLabel}</MetricPill>
+                  <MetricPill>{crcLabel}</MetricPill>
+                  <MetricPill tone="muted">{formatMultiplier(entry.qualityMultiplier)}</MetricPill>
                   <BackerStatusBadge status={entry.backerStatus} size="compact" />
                   {trustValue ? (
-                    <span className="rounded-full bg-ink/6 px-3 py-1.5 text-ink/60 dark:bg-white/10 dark:text-white/65">
-                      Trust {trustValue}
-                    </span>
+                    <MetricPill tone="muted">Trust {trustValue}</MetricPill>
                   ) : (
-                    <span className="rounded-full bg-ink/6 px-3 py-1.5 text-ink/45 dark:bg-white/10 dark:text-white/50">
-                      Trust pending
-                    </span>
+                    <MetricPill tone="muted">Trust pending</MetricPill>
                   )}
                   {entry.mutualCount > 0 ? (
-                    <span className="rounded-full bg-ink/6 px-3 py-1.5 text-ink/60 dark:bg-white/10 dark:text-white/65">
-                      {formatNumber(entry.mutualCount)} mutual
-                    </span>
+                    <MetricPill tone="muted">{formatNumber(entry.mutualCount)} mutual</MetricPill>
                   ) : null}
                 </div>
               </div>
@@ -3713,28 +3723,18 @@ function GarageLeaderboard({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 text-[11px] font-black uppercase sm:justify-end">
-                  <span className="rounded-full bg-ink/6 px-3 py-1.5 text-ink/70 dark:bg-white/10 dark:text-white/75">
-                    {formatNumber(entry.crcEarned)} CRC earned{pendingText}
-                  </span>
-                  <span className="rounded-full bg-ink/6 px-3 py-1.5 text-ink/70 dark:bg-white/10 dark:text-white/75">
-                    {formatNumber(entry.actions)} {missionLabel}
-                  </span>
+                  <MetricPill>{formatNumber(entry.crcEarned)} CRC earned{pendingText}</MetricPill>
+                  <MetricPill>{formatNumber(entry.actions)} {missionLabel}</MetricPill>
                   {entry.trustProfile ? (
                     <BackerStatusBadge status={entry.trustProfile.backerStatus} size="compact" />
                   ) : (
-                    <span className="rounded-full bg-ink/6 px-3 py-1.5 text-ink/50 dark:bg-white/10 dark:text-white/55">
-                      Status pending
-                    </span>
+                    <MetricPill tone="muted">Status pending</MetricPill>
                   )}
                   {trustValue ? (
-                    <span className="rounded-full bg-ink/6 px-3 py-1.5 text-ink/60 dark:bg-white/10 dark:text-white/65">
-                      Trust {trustValue}
-                    </span>
+                    <MetricPill tone="muted">Trust {trustValue}</MetricPill>
                   ) : null}
                   {entry.trustProfile?.mutualCount ? (
-                    <span className="rounded-full bg-ink/6 px-3 py-1.5 text-ink/60 dark:bg-white/10 dark:text-white/65">
-                      {formatNumber(entry.trustProfile.mutualCount)} mutual
-                    </span>
+                    <MetricPill tone="muted">{formatNumber(entry.trustProfile.mutualCount)} mutual</MetricPill>
                   ) : null}
                 </div>
               </div>
