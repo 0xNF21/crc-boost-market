@@ -130,6 +130,19 @@ type GarageXStatus = {
     xReads: number;
   };
   leaderboard: GarageLeaderboardEntry[];
+  recentPayouts: Array<{
+    id: number;
+    walletAddress: string;
+    xUsername: string | null;
+    campaignId: number;
+    campaignTitle: string;
+    campaignRewardCrc: number;
+    action: string;
+    status: string;
+    payoutStatus: string | null;
+    payoutTxHash: string | null;
+    paidAt: string;
+  }>;
   settings: {
     payoutDelaySeconds: number;
     campaignFeeBps: number;
@@ -177,6 +190,8 @@ type GarageReferralStatus = {
   activity: GarageReferralActivity[];
   unavailable?: boolean;
 };
+
+type GarageRecentPayout = GarageXStatus["recentPayouts"][number];
 
 type GarageReferralActivity = {
   id: number;
@@ -296,6 +311,7 @@ const EMPTY_STATUS: GarageXStatus = {
   global: { claims: 0, wallets: 0, xAccounts: 0, crcPaid: 0, xReads: 0, activeCampaigns: 0 },
   personal: { verifiedActions: 0, crcEarned: 0, crcPending: 0, pendingSettlements: 0, xReads: 0 },
   leaderboard: [],
+  recentPayouts: [],
   settings: { payoutDelaySeconds: 300, campaignFeeBps: 250 },
 };
 
@@ -660,6 +676,7 @@ export default function CirclesGaragePage() {
   const [creatorFormOpen, setCreatorFormOpen] = useState(true);
   const [campaignCreatorProfiles, setCampaignCreatorProfiles] = useState<Record<string, CirclesProfile>>({});
   const [leaderboardProfiles, setLeaderboardProfiles] = useState<Record<string, CirclesProfile>>({});
+  const [recentPayoutProfiles, setRecentPayoutProfiles] = useState<Record<string, CirclesProfile>>({});
   const [referralProfiles, setReferralProfiles] = useState<Record<string, CirclesProfile>>({});
   const [myProfile, setMyProfile] = useState<CirclesProfile | null>(null);
   const [landingReferrer, setLandingReferrer] = useState<string | null>(null);
@@ -914,6 +931,37 @@ export default function CirclesGaragePage() {
       cancelled = true;
     };
   }, [status.leaderboard]);
+
+  useEffect(() => {
+    const addresses = Array.from(
+      new Set(status.recentPayouts.map((payout) => payout.walletAddress.toLowerCase()).filter(isAddress)),
+    );
+
+    if (!addresses.length) {
+      setRecentPayoutProfiles({});
+      return;
+    }
+
+    let cancelled = false;
+    void fetch("/api/profiles", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ addresses }),
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled) {
+          setRecentPayoutProfiles(data?.profiles ?? {});
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setRecentPayoutProfiles({});
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [status.recentPayouts]);
 
   useEffect(() => {
     const addresses = Array.from(
@@ -2017,6 +2065,8 @@ export default function CirclesGaragePage() {
                   ))
                 )}
               </div>
+
+              <RecentPayouts payouts={status.recentPayouts} profiles={recentPayoutProfiles} />
             </div>
           )}
 
@@ -3683,6 +3733,128 @@ function GarageLeaderboard({
             <p className="mt-3 font-display text-lg font-black">No ranked wallets yet.</p>
             <p className="mt-1 text-sm font-bold leading-6 text-ink/52 dark:text-white/55">
               The leaderboard fills automatically after verified missions pay CRC on-chain.
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RecentPayouts({
+  payouts,
+  profiles,
+}: {
+  payouts: GarageRecentPayout[];
+  profiles: Record<string, CirclesProfile>;
+}) {
+  return (
+    <div className="rounded-lg border border-ink/10 bg-[#fbfaf6] p-5 shadow-sm dark:border-white/10 dark:bg-white/5 sm:p-6">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45 dark:text-white/45">
+            Recent payouts
+          </p>
+          <h2 className="mt-1 font-display text-xl font-black">CRC sent on-chain</h2>
+          <p className="mt-1 text-sm font-bold leading-6 text-ink/52 dark:text-white/55">
+            Latest verified missions paid through Circles.
+          </p>
+        </div>
+        <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-ink/10 bg-[#f0ede5] text-ink/70 dark:border-white/10 dark:bg-white/10 dark:text-white/75">
+          <CircleDollarSign className="h-5 w-5" />
+        </span>
+      </div>
+
+      <div className="mt-5 divide-y divide-ink/10 overflow-hidden rounded-md border border-ink/10 bg-[#f0ede5] dark:divide-white/10 dark:border-white/10 dark:bg-white/5">
+        {payouts.length ? (
+          payouts.map((payout) => {
+            const profile = profiles[payout.walletAddress.toLowerCase()];
+            const displayName = profile?.name || (payout.xUsername ? `@${payout.xUsername}` : shortAddress(payout.walletAddress));
+            const profileHref = creatorProfilePath(payout.walletAddress, profile);
+            const action = ACTION_LABELS[payout.action as GarageXCampaign["action"]] ?? payout.action;
+
+            return (
+              <div
+                key={payout.id}
+                className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  {profile?.imageUrl ? (
+                    profileHref ? (
+                      <Link href={profileHref} className="shrink-0 rounded-full">
+                        <img
+                          src={profile.imageUrl}
+                          alt={displayName}
+                          className="h-10 w-10 rounded-full border border-ink/10 object-cover transition hover:border-marine/40 dark:border-white/10"
+                        />
+                      </Link>
+                    ) : (
+                      <img
+                        src={profile.imageUrl}
+                        alt={displayName}
+                        className="h-10 w-10 shrink-0 rounded-full border border-ink/10 object-cover dark:border-white/10"
+                      />
+                    )
+                  ) : (
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-ink/10 bg-[#fbfaf6] text-sm font-black text-ink/45 dark:border-white/10 dark:bg-white/10 dark:text-white/45">
+                      {displayName.slice(0, 1).toUpperCase()}
+                    </span>
+                  )}
+                  <div className="min-w-0">
+                    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                      {profileHref ? (
+                        <Link
+                          href={profileHref}
+                          className="inline-flex max-w-[180px] items-center gap-1.5 truncate font-display text-base font-black leading-tight text-ink transition hover:text-marine dark:text-white dark:hover:text-sky-300"
+                        >
+                          <span className="truncate">{displayName}</span>
+                          <ExternalLink className="h-3 w-3 shrink-0" />
+                        </Link>
+                      ) : (
+                        <span className="max-w-[180px] truncate font-display text-base font-black leading-tight">
+                          {displayName}
+                        </span>
+                      )}
+                      <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-emerald-700 dark:text-emerald-300">
+                        +{formatNumber(payout.campaignRewardCrc)} CRC
+                      </span>
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-bold text-ink/45 dark:text-white/45">
+                      <span className="truncate">{payout.campaignTitle}</span>
+                      <span>{action}</span>
+                      <span>{formatDateTime(payout.paidAt)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex shrink-0 items-center gap-2 sm:justify-end">
+                  {payout.payoutTxHash ? (
+                    <a
+                      href={`https://gnosisscan.io/tx/${payout.payoutTxHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-ink/10 bg-[#fbfaf6] px-3 text-xs font-black text-ink transition hover:border-marine/30 hover:bg-white dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/15"
+                    >
+                      Tx {shortHash(payout.payoutTxHash)}
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  ) : (
+                    <span className="rounded-full bg-ink/6 px-3 py-1.5 text-[11px] font-black uppercase text-ink/55 dark:bg-white/10 dark:text-white/55">
+                      {claimStatusLabel(payout.status)}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="p-5 text-center">
+            <span className="mx-auto inline-flex h-11 w-11 items-center justify-center rounded-md bg-[#fbfaf6] text-ink/45 dark:bg-white/10 dark:text-white/45">
+              <CircleDollarSign className="h-5 w-5" />
+            </span>
+            <p className="mt-3 font-display text-lg font-black">No on-chain payouts yet.</p>
+            <p className="mt-1 text-sm font-bold leading-6 text-ink/52 dark:text-white/55">
+              Verified claims will appear here after CRC is sent.
             </p>
           </div>
         )}

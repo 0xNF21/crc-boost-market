@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { getAuthenticatedAddress } from "@/lib/auth/session";
 import { garageTrustProfiles, garageXAccounts, garageXCampaigns, garageXClaims } from "@/lib/db/schema";
@@ -118,6 +118,31 @@ export async function GET(req: NextRequest) {
       )
       .limit(10);
 
+    const recentPayouts = await db
+      .select({
+        id: garageXClaims.id,
+        walletAddress: garageXClaims.walletAddress,
+        xUsername: garageXClaims.xUsername,
+        campaignId: garageXClaims.campaignId,
+        campaignTitle: garageXCampaigns.title,
+        campaignRewardCrc: garageXCampaigns.rewardCrc,
+        action: garageXClaims.action,
+        status: garageXClaims.status,
+        payoutStatus: garageXClaims.payoutStatus,
+        payoutTxHash: garageXClaims.payoutTxHash,
+        paidAt: garageXClaims.updatedAt,
+      })
+      .from(garageXClaims)
+      .innerJoin(garageXCampaigns, eq(garageXCampaigns.id, garageXClaims.campaignId))
+      .where(
+        and(
+          inArray(garageXClaims.status, ["paid", "payout_sending", "payout_pending"]),
+          isNotNull(garageXClaims.payoutTxHash),
+        ),
+      )
+      .orderBy(desc(garageXClaims.updatedAt))
+      .limit(8);
+
     const leaderboardWallets = leaderboard
       .map((entry) => entry.walletAddress?.toLowerCase())
       .filter((wallet): wallet is string => Boolean(wallet));
@@ -205,8 +230,21 @@ export async function GET(req: NextRequest) {
                 lastFetchedAt: trustProfile.lastFetchedAt.toISOString(),
               }
             : null,
-        };
+          };
       }),
+      recentPayouts: recentPayouts.map((payout) => ({
+        id: payout.id,
+        walletAddress: payout.walletAddress,
+        xUsername: payout.xUsername,
+        campaignId: payout.campaignId,
+        campaignTitle: payout.campaignTitle,
+        campaignRewardCrc: Number(payout.campaignRewardCrc ?? 0),
+        action: payout.action,
+        status: payout.status,
+        payoutStatus: payout.payoutStatus,
+        payoutTxHash: payout.payoutTxHash,
+        paidAt: payout.paidAt.toISOString(),
+      })),
       settings: {
         payoutDelaySeconds: getGarageXPayoutDelaySeconds(),
         campaignFeeBps: getGarageCampaignFeeBps(),
@@ -225,6 +263,7 @@ export async function GET(req: NextRequest) {
         global: { claims: 0, wallets: 0, xAccounts: 0, crcPaid: 0, xReads: 0, activeCampaigns: 0 },
         personal: { verifiedActions: 0, crcEarned: 0, crcPending: 0, pendingSettlements: 0, xReads: 0 },
         leaderboard: [],
+        recentPayouts: [],
         settings: {
           payoutDelaySeconds: getGarageXPayoutDelaySeconds(),
           campaignFeeBps: getGarageCampaignFeeBps(),
