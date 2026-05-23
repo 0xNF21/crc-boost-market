@@ -1325,7 +1325,9 @@ export default function CirclesGaragePage() {
               ? verifyMisses >= 1
                 ? "X still has not indexed the repost. Try once more in a few seconds for a deeper check."
                 : "X has not indexed the repost yet. Keep it live and verify again in a few seconds."
-              : "Action not found on X. Keep the repost live and try again.",
+              : data?.evidence === "user_timeline_repost+retweeted_by"
+                ? `Action not found after a deeper X scan${data?.checked ? ` (${data.checked} records checked)` : ""}. Keep the repost live and try again.`
+                : "Action not found on X. Keep the repost live and try again.",
           X_ACCOUNT_REQUIRED: "Link your X account first.",
           X_API_NOT_CONFIGURED: "X API token is missing.",
           X_API_NO_CREDITS: "X API account has no credits for verification.",

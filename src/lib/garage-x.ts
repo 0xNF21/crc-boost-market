@@ -626,7 +626,7 @@ function clampInteger(value: number, min: number, max: number) {
 }
 
 function timelineMaxResults() {
-  return clampInteger(Number(process.env.GARAGE_X_TIMELINE_MAX_RESULTS ?? 10), 5, 100);
+  return clampInteger(Number(process.env.GARAGE_X_TIMELINE_MAX_RESULTS ?? 100), 5, 100);
 }
 
 function retweetedByFallbackPages() {
@@ -634,7 +634,7 @@ function retweetedByFallbackPages() {
 }
 
 function retweetedByFallbackMaxResults() {
-  return clampInteger(Number(process.env.GARAGE_X_RETWEETED_BY_FALLBACK_MAX_RESULTS ?? 20), 1, 100);
+  return clampInteger(Number(process.env.GARAGE_X_RETWEETED_BY_FALLBACK_MAX_RESULTS ?? 100), 1, 100);
 }
 
 async function findUserInPagedUsers(
