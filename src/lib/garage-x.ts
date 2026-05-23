@@ -3,6 +3,12 @@ import QRCode from "qrcode";
 import { generateGamePaymentLink } from "@/lib/circles";
 
 export type GarageXAction = "like" | "repost" | "quote" | "follow";
+export type GarageXVerificationResult = {
+  ok: boolean;
+  checked: number;
+  evidence: string;
+  observedUserIds?: string[];
+};
 
 export const GARAGE_X_ACTIONS: GarageXAction[] = ["like", "repost", "quote", "follow"];
 export const GARAGE_CAMPAIGN_FUNDING_GAME = "buyboostcampaign";
@@ -627,9 +633,15 @@ function retweetedByFallbackPages() {
   return clampInteger(Number(process.env.GARAGE_X_RETWEETED_BY_FALLBACK_PAGES ?? 2), 0, 10);
 }
 
-async function findUserInPagedUsers(baseUrl: string, xUserId: string, maxPages = 10) {
+async function findUserInPagedUsers(
+  baseUrl: string,
+  xUserId: string,
+  maxPages = 10,
+  options?: { collectUserIds?: boolean },
+) {
   let nextToken: string | undefined;
   let checked = 0;
+  const observedUserIds = options?.collectUserIds ? new Set<string>() : null;
 
   for (let page = 0; page < maxPages; page += 1) {
     const url = new URL(baseUrl);
@@ -637,14 +649,17 @@ async function findUserInPagedUsers(baseUrl: string, xUserId: string, maxPages =
     const data = await xApi<XUsersPage>(url.toString());
     const users = data.data ?? [];
     checked += users.length;
+    for (const user of users) {
+      if (observedUserIds && user.id) observedUserIds.add(user.id);
+    }
     if (users.some((user) => user.id === xUserId)) {
-      return { ok: true, checked };
+      return { ok: true, checked, observedUserIds: observedUserIds ? [...observedUserIds] : undefined };
     }
     nextToken = data.meta?.next_token;
     if (!nextToken) break;
   }
 
-  return { ok: false, checked };
+  return { ok: false, checked, observedUserIds: observedUserIds ? [...observedUserIds] : undefined };
 }
 
 async function findRepostInUserTimeline(tweetId: string, xUserId: string, startTime?: Date | null) {
@@ -666,10 +681,10 @@ async function findRepostInUserTimeline(tweetId: string, xUserId: string, startT
 
 async function findRepostByRetweetedUsers(tweetId: string, xUserId: string) {
   const pages = retweetedByFallbackPages();
-  if (pages <= 0) return { ok: false, checked: 0 };
+  if (pages <= 0) return { ok: false, checked: 0, observedUserIds: undefined };
 
   const baseUrl = `https://api.x.com/2/tweets/${tweetId}/retweeted_by?max_results=100`;
-  return findUserInPagedUsers(baseUrl, xUserId, pages);
+  return findUserInPagedUsers(baseUrl, xUserId, pages, { collectUserIds: true });
 }
 
 async function findQuoteByAuthor(tweetId: string, xUserId: string, maxPages = 10) {
@@ -701,7 +716,7 @@ export async function verifyGarageXAction(params: {
   targetXUserId: string | null;
   xUserId: string;
   startedAt?: Date | null;
-}): Promise<{ ok: boolean; checked: number; evidence: string }> {
+}): Promise<GarageXVerificationResult> {
   if (params.action !== "follow" && !params.tweetId) {
     return { ok: false, checked: 0, evidence: "missing_tweet_id" };
   }
@@ -723,6 +738,7 @@ export async function verifyGarageXAction(params: {
       ok: retweetedByResult.ok,
       checked: timelineResult.checked + retweetedByResult.checked,
       evidence: retweetedByResult.ok ? "retweeted_by_fallback" : "user_timeline_repost+retweeted_by",
+      observedUserIds: retweetedByResult.observedUserIds,
     };
   }
 

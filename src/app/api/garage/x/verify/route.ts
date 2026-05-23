@@ -145,6 +145,50 @@ async function storePositiveVerification(params: {
     });
 }
 
+async function storeObservedPositiveVerifications(params: {
+  action: string;
+  tweetId: string | null;
+  xUserIds: string[] | undefined;
+  evidence: string;
+}) {
+  const ttl = verificationCacheMs();
+  if (!ttl || !params.tweetId || !params.xUserIds?.length) return;
+
+  const uniqueUserIds = [...new Set(params.xUserIds.filter(Boolean))];
+  if (uniqueUserIds.length === 0) return;
+
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + ttl);
+  await db
+    .insert(garageXVerificationCache)
+    .values(
+      uniqueUserIds.map((xUserId) => ({
+        action: params.action,
+        tweetId: params.tweetId!,
+        xUserId,
+        evidence: params.evidence,
+        checked: 0,
+        observedAt: now,
+        expiresAt,
+        updatedAt: now,
+      })),
+    )
+    .onConflictDoUpdate({
+      target: [
+        garageXVerificationCache.action,
+        garageXVerificationCache.tweetId,
+        garageXVerificationCache.xUserId,
+      ],
+      set: {
+        evidence: params.evidence,
+        checked: 0,
+        observedAt: now,
+        expiresAt,
+        updatedAt: now,
+      },
+    });
+}
+
 async function verifyWithCache(params: {
   action: NonNullable<ReturnType<typeof normalizeXAction>>;
   tweetId: string | null;
@@ -163,6 +207,14 @@ async function verifyWithCache(params: {
     xUserId: params.xUserId,
     startedAt: params.startedAt,
   });
+  if (params.action === "repost" && verification.observedUserIds?.length) {
+    await storeObservedPositiveVerifications({
+      action: params.action,
+      tweetId: params.tweetId,
+      xUserIds: verification.observedUserIds,
+      evidence: "retweeted_by_fallback",
+    });
+  }
   if (verification.ok) {
     await storePositiveVerification({
       action: params.action,
