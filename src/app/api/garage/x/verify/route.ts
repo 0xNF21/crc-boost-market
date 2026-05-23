@@ -196,6 +196,7 @@ async function verifyWithCache(params: {
   xUserId: string;
   startedAt?: Date | null;
   minObservedAt?: Date | null;
+  allowRetweetedByFallback?: boolean;
 }) {
   const cached = await readCachedVerification(params);
   if (cached) return cached;
@@ -206,6 +207,7 @@ async function verifyWithCache(params: {
     targetXUserId: params.targetXUserId,
     xUserId: params.xUserId,
     startedAt: params.startedAt,
+    allowRetweetedByFallback: params.allowRetweetedByFallback,
   });
   if (params.action === "repost" && verification.observedUserIds?.length) {
     await storeObservedPositiveVerifications({
@@ -298,6 +300,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "INVALID_CAMPAIGN" }, { status: 400 });
   }
   const startedAt = parseStartedAt(body?.openedAt);
+  const allowRetweetedByFallback = body?.allowRetweetedByFallback === true;
+  if (allowRetweetedByFallback) {
+    const fallbackLimited = await enforceRateLimit(req, "garage-x-retweeted-by-fallback", 5, 60_000);
+    if (fallbackLimited) return fallbackLimited;
+  }
 
   try {
     const [account] = await db
@@ -363,6 +370,7 @@ export async function POST(req: NextRequest) {
           xUserId: account.xUserId,
           startedAt,
           minObservedAt: payoutAvailableAt,
+          allowRetweetedByFallback,
         });
       } catch (error: any) {
         console.error("[garage/x/verify] X API error:", error?.message ?? error);
@@ -427,6 +435,7 @@ export async function POST(req: NextRequest) {
         targetXUserId: campaign.targetXUserId,
         xUserId: account.xUserId,
         startedAt,
+        allowRetweetedByFallback,
       });
     } catch (error: any) {
       console.error("[garage/x/verify] X API error:", error?.message ?? error);

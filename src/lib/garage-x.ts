@@ -630,7 +630,11 @@ function timelineMaxResults() {
 }
 
 function retweetedByFallbackPages() {
-  return clampInteger(Number(process.env.GARAGE_X_RETWEETED_BY_FALLBACK_PAGES ?? 0), 0, 10);
+  return clampInteger(Number(process.env.GARAGE_X_RETWEETED_BY_FALLBACK_PAGES ?? 1), 0, 10);
+}
+
+function retweetedByFallbackMaxResults() {
+  return clampInteger(Number(process.env.GARAGE_X_RETWEETED_BY_FALLBACK_MAX_RESULTS ?? 20), 1, 100);
 }
 
 async function findUserInPagedUsers(
@@ -683,7 +687,7 @@ async function findRepostByRetweetedUsers(tweetId: string, xUserId: string) {
   const pages = retweetedByFallbackPages();
   if (pages <= 0) return { ok: false, checked: 0, observedUserIds: undefined };
 
-  const baseUrl = `https://api.x.com/2/tweets/${tweetId}/retweeted_by?max_results=100`;
+  const baseUrl = `https://api.x.com/2/tweets/${tweetId}/retweeted_by?max_results=${retweetedByFallbackMaxResults()}`;
   return findUserInPagedUsers(baseUrl, xUserId, pages, { collectUserIds: true });
 }
 
@@ -716,6 +720,7 @@ export async function verifyGarageXAction(params: {
   targetXUserId: string | null;
   xUserId: string;
   startedAt?: Date | null;
+  allowRetweetedByFallback?: boolean;
 }): Promise<GarageXVerificationResult> {
   if (params.action !== "follow" && !params.tweetId) {
     return { ok: false, checked: 0, evidence: "missing_tweet_id" };
@@ -730,6 +735,10 @@ export async function verifyGarageXAction(params: {
   if (params.action === "repost") {
     const timelineResult = await findRepostInUserTimeline(params.tweetId!, params.xUserId, params.startedAt);
     if (timelineResult.ok) {
+      return { ...timelineResult, evidence: "user_timeline_repost" };
+    }
+
+    if (!params.allowRetweetedByFallback) {
       return { ...timelineResult, evidence: "user_timeline_repost" };
     }
 

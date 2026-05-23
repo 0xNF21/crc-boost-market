@@ -602,6 +602,10 @@ function campaignOpenKey(campaignId: number) {
   return `nfs-garage-x-opened-at:${campaignId}`;
 }
 
+function campaignVerifyMissKey(campaignId: number) {
+  return `nfs-garage-x-verify-misses:${campaignId}`;
+}
+
 function fundingSentKey(campaignId: number) {
   return `nfs-garage-funding-sent:${campaignId}`;
 }
@@ -1211,16 +1215,27 @@ export default function CirclesGaragePage() {
     setVerifyingId(campaign.id);
     try {
       const openedAt = window.localStorage.getItem(campaignOpenKey(campaign.id));
+      const missKey = campaignVerifyMissKey(campaign.id);
+      const verifyMisses = Number(window.localStorage.getItem(missKey) ?? 0);
+      const allowRetweetedByFallback = Number.isFinite(verifyMisses) && verifyMisses >= 2;
       const res = await fetch("/api/garage/x/verify", {
         method: "POST",
         credentials: "include",
         headers: clientAuthHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ campaignId: campaign.id, openedAt }),
+        body: JSON.stringify({ campaignId: campaign.id, openedAt, allowRetweetedByFallback }),
       });
       const data = await res.json();
       if (!res.ok) {
+        if (data?.error === "ACTION_NOT_FOUND") {
+          window.localStorage.setItem(missKey, String(verifyMisses + 1));
+        }
         const errorCopy: Record<string, string> = {
-          ACTION_NOT_FOUND: "Action not found on X. Keep the repost live and try again.",
+          ACTION_NOT_FOUND:
+            data?.evidence === "user_timeline_repost" && !allowRetweetedByFallback
+              ? verifyMisses >= 1
+                ? "X still has not indexed the repost. Try once more in a few seconds for a deeper check."
+                : "X has not indexed the repost yet. Keep it live and verify again in a few seconds."
+              : "Action not found on X. Keep the repost live and try again.",
           X_ACCOUNT_REQUIRED: "Link your X account first.",
           X_API_NOT_CONFIGURED: "X API token is missing.",
           X_API_NO_CREDITS: "X API account has no credits for verification.",
@@ -1236,6 +1251,7 @@ export default function CirclesGaragePage() {
         });
         return;
       }
+      window.localStorage.removeItem(campaignVerifyMissKey(campaign.id));
       if (data?.status === "verified_pending" || data?.status === "settlement_pending") {
         const when = formatDateTime(data?.availableAt ?? data?.claim?.payoutAvailableAt);
         setCampaignFeedback({
