@@ -692,6 +692,10 @@ export default function CirclesGaragePage() {
     description: "",
   });
   const profileAddress = address ?? (isMiniApp ? miniAppWalletAddress : null);
+  const latestPayout = status.recentPayouts[0] ?? null;
+  const latestPayoutProfile = latestPayout
+    ? recentPayoutProfiles[latestPayout.walletAddress.toLowerCase()]
+    : undefined;
 
   const inviteLink = useMemo(() => {
     if (!origin) return "";
@@ -1642,8 +1646,9 @@ export default function CirclesGaragePage() {
 
       <section className="garage-header sticky top-0 z-30 border-b border-ink/10 bg-sand/90 pt-16 backdrop-blur-xl dark:border-white/10 dark:bg-[#0a0a0a]/90 sm:pt-3 min-[1120px]:pt-0">
         <div className="mx-auto grid max-w-7xl gap-3 px-4 py-3 min-[1120px]:grid-cols-[minmax(220px,1fr)_auto_minmax(220px,1fr)] min-[1120px]:items-center">
-          <div className="order-2 relative min-w-0 justify-self-start min-[1120px]:order-none">
-            <div className="rounded-2xl border border-ink/10 bg-[#f0ede5]/95 p-1.5 text-ink shadow-[0_18px_42px_-34px_rgba(37,27,159,0.45)] backdrop-blur-xl dark:border-white/10 dark:bg-[#19171d]/95 dark:text-white dark:shadow-[0_18px_42px_-34px_rgba(0,0,0,0.72)]">
+          <div className="order-2 flex min-w-0 flex-col gap-2 justify-self-start min-[720px]:flex-row min-[720px]:items-center min-[1120px]:order-none">
+            <LatestPayoutTicker payout={latestPayout} profile={latestPayoutProfile} />
+            <div className="relative min-w-0 rounded-2xl border border-ink/10 bg-[#f0ede5]/95 p-1.5 text-ink shadow-[0_18px_42px_-34px_rgba(37,27,159,0.45)] backdrop-blur-xl dark:border-white/10 dark:bg-[#19171d]/95 dark:text-white dark:shadow-[0_18px_42px_-34px_rgba(0,0,0,0.72)]">
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
@@ -2065,8 +2070,6 @@ export default function CirclesGaragePage() {
                   ))
                 )}
               </div>
-
-              <RecentPayouts payouts={status.recentPayouts} profiles={recentPayoutProfiles} />
             </div>
           )}
 
@@ -3741,125 +3744,74 @@ function GarageLeaderboard({
   );
 }
 
-function RecentPayouts({
-  payouts,
-  profiles,
+function LatestPayoutTicker({
+  payout,
+  profile,
 }: {
-  payouts: GarageRecentPayout[];
-  profiles: Record<string, CirclesProfile>;
+  payout: GarageRecentPayout | null | undefined;
+  profile?: CirclesProfile;
 }) {
-  return (
-    <div className="rounded-lg border border-ink/10 bg-[#fbfaf6] p-5 shadow-sm dark:border-white/10 dark:bg-white/5 sm:p-6">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-ink/45 dark:text-white/45">
-            Recent payouts
-          </p>
-          <h2 className="mt-1 font-display text-xl font-black">CRC sent on-chain</h2>
-          <p className="mt-1 text-sm font-bold leading-6 text-ink/52 dark:text-white/55">
-            Latest verified missions paid through Circles.
-          </p>
-        </div>
-        <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-ink/10 bg-[#f0ede5] text-ink/70 dark:border-white/10 dark:bg-white/10 dark:text-white/75">
-          <CircleDollarSign className="h-5 w-5" />
+  if (!payout) {
+    return (
+      <div className="inline-flex h-[52px] max-w-full items-center gap-2 rounded-2xl border border-ink/10 bg-[#f0ede5]/95 px-3 text-ink shadow-[0_18px_42px_-34px_rgba(37,27,159,0.45)] backdrop-blur-xl dark:border-white/10 dark:bg-[#19171d]/95 dark:text-white dark:shadow-[0_18px_42px_-34px_rgba(0,0,0,0.72)]">
+        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-ink/10 bg-[#fbfaf6]/80 text-ink/60 dark:border-white/10 dark:bg-white/10 dark:text-white/65">
+          <CircleDollarSign className="h-4 w-4" />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-[10px] font-black uppercase tracking-[0.16em] text-ink/45 dark:text-white/45">
+            Latest payout
+          </span>
+          <span className="block truncate text-[11px] font-black text-ink/68 dark:text-white/68">
+            Waiting for CRC
+          </span>
         </span>
       </div>
+    );
+  }
 
-      <div className="mt-5 divide-y divide-ink/10 overflow-hidden rounded-md border border-ink/10 bg-[#f0ede5] dark:divide-white/10 dark:border-white/10 dark:bg-white/5">
-        {payouts.length ? (
-          payouts.map((payout) => {
-            const profile = profiles[payout.walletAddress.toLowerCase()];
-            const displayName = profile?.name || (payout.xUsername ? `@${payout.xUsername}` : shortAddress(payout.walletAddress));
-            const profileHref = creatorProfilePath(payout.walletAddress, profile);
-            const action = ACTION_LABELS[payout.action as GarageXCampaign["action"]] ?? payout.action;
+  const displayName = profile?.name || (payout.xUsername ? `@${payout.xUsername}` : shortAddress(payout.walletAddress));
+  const action = ACTION_LABELS[payout.action as GarageXCampaign["action"]] ?? payout.action;
+  const txHref = payout.payoutTxHash ? `https://gnosisscan.io/tx/${payout.payoutTxHash}` : null;
+  const content = (
+    <>
+      {profile?.imageUrl ? (
+        <img
+          src={profile.imageUrl}
+          alt={displayName}
+          className="h-8 w-8 shrink-0 rounded-xl border border-ink/10 object-cover dark:border-white/10"
+        />
+      ) : (
+        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-ink/10 bg-emerald-500/10 text-emerald-700 dark:border-white/10 dark:text-emerald-300">
+          <CircleDollarSign className="h-4 w-4" />
+        </span>
+      )}
+      <span className="min-w-0">
+        <span className="flex min-w-0 items-center gap-1.5">
+          <span className="text-[10px] font-black uppercase tracking-[0.16em] text-ink/45 dark:text-white/45">
+            Latest payout
+          </span>
+          <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-black uppercase text-emerald-700 dark:text-emerald-300">
+            +{formatNumber(payout.campaignRewardCrc)}
+          </span>
+        </span>
+        <span className="mt-0.5 block max-w-[190px] truncate text-[11px] font-black text-ink/72 dark:text-white/72">
+          {displayName} - {action}
+        </span>
+      </span>
+      {txHref ? <ExternalLink className="h-3.5 w-3.5 shrink-0 text-ink/45 dark:text-white/45" /> : null}
+    </>
+  );
+  const className =
+    "inline-flex h-[52px] max-w-full items-center gap-2 rounded-2xl border border-emerald-600/18 bg-emerald-50/80 px-3 text-ink shadow-[0_18px_42px_-34px_rgba(16,185,129,0.5)] backdrop-blur-xl transition hover:border-emerald-600/30 hover:bg-emerald-50 dark:border-emerald-300/15 dark:bg-emerald-300/10 dark:text-white dark:shadow-[0_18px_42px_-34px_rgba(0,0,0,0.72)] dark:hover:bg-emerald-300/15";
 
-            return (
-              <div
-                key={payout.id}
-                className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  {profile?.imageUrl ? (
-                    profileHref ? (
-                      <Link href={profileHref} className="shrink-0 rounded-full">
-                        <img
-                          src={profile.imageUrl}
-                          alt={displayName}
-                          className="h-10 w-10 rounded-full border border-ink/10 object-cover transition hover:border-marine/40 dark:border-white/10"
-                        />
-                      </Link>
-                    ) : (
-                      <img
-                        src={profile.imageUrl}
-                        alt={displayName}
-                        className="h-10 w-10 shrink-0 rounded-full border border-ink/10 object-cover dark:border-white/10"
-                      />
-                    )
-                  ) : (
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-ink/10 bg-[#fbfaf6] text-sm font-black text-ink/45 dark:border-white/10 dark:bg-white/10 dark:text-white/45">
-                      {displayName.slice(0, 1).toUpperCase()}
-                    </span>
-                  )}
-                  <div className="min-w-0">
-                    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                      {profileHref ? (
-                        <Link
-                          href={profileHref}
-                          className="inline-flex max-w-[180px] items-center gap-1.5 truncate font-display text-base font-black leading-tight text-ink transition hover:text-marine dark:text-white dark:hover:text-sky-300"
-                        >
-                          <span className="truncate">{displayName}</span>
-                          <ExternalLink className="h-3 w-3 shrink-0" />
-                        </Link>
-                      ) : (
-                        <span className="max-w-[180px] truncate font-display text-base font-black leading-tight">
-                          {displayName}
-                        </span>
-                      )}
-                      <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-emerald-700 dark:text-emerald-300">
-                        +{formatNumber(payout.campaignRewardCrc)} CRC
-                      </span>
-                    </div>
-                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-bold text-ink/45 dark:text-white/45">
-                      <span className="truncate">{payout.campaignTitle}</span>
-                      <span>{action}</span>
-                      <span>{formatDateTime(payout.paidAt)}</span>
-                    </div>
-                  </div>
-                </div>
+  if (!txHref) {
+    return <div className={className}>{content}</div>;
+  }
 
-                <div className="flex shrink-0 items-center gap-2 sm:justify-end">
-                  {payout.payoutTxHash ? (
-                    <a
-                      href={`https://gnosisscan.io/tx/${payout.payoutTxHash}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-ink/10 bg-[#fbfaf6] px-3 text-xs font-black text-ink transition hover:border-marine/30 hover:bg-white dark:border-white/10 dark:bg-white/10 dark:text-white dark:hover:bg-white/15"
-                    >
-                      Tx {shortHash(payout.payoutTxHash)}
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </a>
-                  ) : (
-                    <span className="rounded-full bg-ink/6 px-3 py-1.5 text-[11px] font-black uppercase text-ink/55 dark:bg-white/10 dark:text-white/55">
-                      {claimStatusLabel(payout.status)}
-                    </span>
-                  )}
-                </div>
-              </div>
-            );
-          })
-        ) : (
-          <div className="p-5 text-center">
-            <span className="mx-auto inline-flex h-11 w-11 items-center justify-center rounded-md bg-[#fbfaf6] text-ink/45 dark:bg-white/10 dark:text-white/45">
-              <CircleDollarSign className="h-5 w-5" />
-            </span>
-            <p className="mt-3 font-display text-lg font-black">No on-chain payouts yet.</p>
-            <p className="mt-1 text-sm font-bold leading-6 text-ink/52 dark:text-white/55">
-              Verified claims will appear here after CRC is sent.
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
+  return (
+    <a href={txHref} target="_blank" rel="noopener noreferrer" className={className} title={`Tx ${shortHash(payout.payoutTxHash)}`}>
+      {content}
+    </a>
   );
 }
 
