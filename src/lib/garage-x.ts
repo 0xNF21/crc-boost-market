@@ -634,7 +634,7 @@ function retweetedByFallbackPages() {
 }
 
 function retweetedByFallbackMaxResults() {
-  return clampInteger(Number(process.env.GARAGE_X_RETWEETED_BY_FALLBACK_MAX_RESULTS ?? 100), 1, 100);
+  return clampInteger(Number(process.env.GARAGE_X_RETWEETED_BY_FALLBACK_MAX_RESULTS ?? 50), 1, 100);
 }
 
 async function findUserInPagedUsers(
