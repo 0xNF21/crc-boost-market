@@ -536,10 +536,12 @@ const BACKER_STATUS_LABELS: Record<GarageBackerStatus, string> = {
 };
 
 function backerStatusTone(status: GarageBackerStatus) {
-  if (status === "direct") return "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300";
-  if (status === "indirect") return "bg-marine/10 text-marine dark:text-sky-300";
-  if (status === "none") return "bg-citrus/10 text-citrus";
-  return "bg-ink/8 text-ink/55 dark:bg-white/10 dark:text-white/60";
+  const sharedBackerTone =
+    "border border-citrus/18 bg-[#f3eee7] dark:border-citrus/20 dark:bg-white/8";
+  if (status === "direct") return `${sharedBackerTone} text-emerald-700 dark:text-emerald-300`;
+  if (status === "indirect") return `${sharedBackerTone} text-marine dark:text-sky-300`;
+  if (status === "none") return "border border-citrus/16 bg-citrus/10 text-citrus";
+  return "border border-ink/10 bg-ink/8 text-ink/55 dark:border-white/10 dark:bg-white/10 dark:text-white/60";
 }
 
 function backerStatusIconSrc(status: GarageBackerStatus) {
