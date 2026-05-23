@@ -1841,15 +1841,15 @@ export default function CirclesGaragePage() {
             />
           </div>
 
-          <div id="garage-sections" className="grid scroll-mt-24 gap-2 rounded-lg border border-ink/10 bg-[#fbfaf6] p-2 shadow-sm dark:border-white/10 dark:bg-white/5 sm:grid-cols-2 xl:grid-cols-4">
+          <div id="garage-sections" className="flex scroll-mt-24 flex-wrap items-center gap-y-1 rounded-lg border border-ink/10 bg-[#fbfaf6] p-2 shadow-sm dark:border-white/10 dark:bg-white/5 sm:flex-nowrap">
             <button
               type="button"
               onClick={() => setGarageSection("boosts")}
               aria-pressed={garageSection === "boosts"}
-              className={`flex items-center gap-3 rounded-md px-4 py-3 text-left transition ${
+              className={`group flex min-w-[136px] flex-1 cursor-pointer items-center gap-3 rounded-md px-4 py-3 text-left ring-1 ring-transparent transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marine/55 ${
                 garageSection === "boosts"
                   ? "bg-ink text-white dark:bg-white dark:text-ink"
-                  : "text-ink/55 hover:bg-ink/5 hover:text-ink dark:text-white/55 dark:hover:bg-white/10 dark:hover:text-white"
+                  : "text-ink/55 hover:-translate-y-0.5 hover:bg-ink/5 hover:text-ink hover:ring-ink/10 dark:text-white/55 dark:hover:bg-white/10 dark:hover:text-white dark:hover:ring-white/10"
               }`}
             >
               <Target className="h-4 w-4 shrink-0" />
@@ -1858,14 +1858,15 @@ export default function CirclesGaragePage() {
                 <span className="block text-[11px] font-bold opacity-60">earn CRC</span>
               </span>
             </button>
+            <span aria-hidden="true" className="hidden h-8 w-px shrink-0 rounded-full bg-ink/15 dark:bg-white/15 sm:block" />
             <button
               type="button"
               onClick={() => setGarageSection("leaderboard")}
               aria-pressed={garageSection === "leaderboard"}
-              className={`flex items-center gap-3 rounded-md px-4 py-3 text-left transition ${
+              className={`group flex min-w-[136px] flex-1 cursor-pointer items-center gap-3 rounded-md px-4 py-3 text-left ring-1 ring-transparent transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marine/55 ${
                 garageSection === "leaderboard"
                   ? "bg-ink text-white dark:bg-white dark:text-ink"
-                  : "text-ink/55 hover:bg-ink/5 hover:text-ink dark:text-white/55 dark:hover:bg-white/10 dark:hover:text-white"
+                  : "text-ink/55 hover:-translate-y-0.5 hover:bg-ink/5 hover:text-ink hover:ring-ink/10 dark:text-white/55 dark:hover:bg-white/10 dark:hover:text-white dark:hover:ring-white/10"
               }`}
             >
               <Trophy className="h-4 w-4 shrink-0" />
@@ -1874,14 +1875,15 @@ export default function CirclesGaragePage() {
                 <span className="block text-[11px] font-bold opacity-60">top CRC earners</span>
               </span>
             </button>
+            <span aria-hidden="true" className="hidden h-8 w-px shrink-0 rounded-full bg-ink/15 dark:bg-white/15 sm:block" />
             <button
               type="button"
               onClick={() => setGarageSection("profile")}
               aria-pressed={garageSection === "profile"}
-              className={`flex items-center gap-3 rounded-md px-4 py-3 text-left transition ${
+              className={`group flex min-w-[136px] flex-1 cursor-pointer items-center gap-3 rounded-md px-4 py-3 text-left ring-1 ring-transparent transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marine/55 ${
                 garageSection === "profile"
                   ? "bg-ink text-white dark:bg-white dark:text-ink"
-                  : "text-ink/55 hover:bg-ink/5 hover:text-ink dark:text-white/55 dark:hover:bg-white/10 dark:hover:text-white"
+                  : "text-ink/55 hover:-translate-y-0.5 hover:bg-ink/5 hover:text-ink hover:ring-ink/10 dark:text-white/55 dark:hover:bg-white/10 dark:hover:text-white dark:hover:ring-white/10"
               }`}
             >
               <Wallet className="h-4 w-4 shrink-0" />
@@ -1890,14 +1892,15 @@ export default function CirclesGaragePage() {
                 <span className="block text-[11px] font-bold opacity-60">referrals + history</span>
               </span>
             </button>
+            <span aria-hidden="true" className="hidden h-8 w-px shrink-0 rounded-full bg-ink/15 dark:bg-white/15 sm:block" />
             <button
               type="button"
               onClick={() => setGarageSection("creator")}
               aria-pressed={garageSection === "creator"}
-              className={`flex items-center gap-3 rounded-md px-4 py-3 text-left transition ${
+              className={`group flex min-w-[136px] flex-1 cursor-pointer items-center gap-3 rounded-md px-4 py-3 text-left ring-1 ring-transparent transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-marine/55 ${
                 garageSection === "creator"
                   ? "bg-ink text-white dark:bg-white dark:text-ink"
-                  : "text-ink/55 hover:bg-ink/5 hover:text-ink dark:text-white/55 dark:hover:bg-white/10 dark:hover:text-white"
+                  : "text-ink/55 hover:-translate-y-0.5 hover:bg-ink/5 hover:text-ink hover:ring-ink/10 dark:text-white/55 dark:hover:bg-white/10 dark:hover:text-white dark:hover:ring-white/10"
               }`}
             >
               <Plus className="h-4 w-4 shrink-0" />
@@ -1910,98 +1913,92 @@ export default function CirclesGaragePage() {
 
           {garageSection === "boosts" && (
             <div className="space-y-6">
-          <div className="rounded-lg border border-ink/10 bg-[#fbfaf6] px-5 py-4 text-sm font-bold leading-6 text-ink/58 shadow-sm dark:border-white/10 dark:bg-white/5 dark:text-white/60">
-            Live boosts are ranked by reward, open slots, freshness, and creator trust.
-          </div>
-          <div className="grid gap-5 rounded-lg border border-ink/10 bg-[#f7f7fa] p-5 shadow-sm dark:border-white/10 dark:bg-white/5 md:grid-cols-3">
-            <FlowStep
-              icon={MousePointerClick}
-              step="01"
-              title="Open X"
-              detail="Open the campaign post and complete the requested action."
-            />
-            <FlowStep
-              icon={SearchCheck}
-              step="02"
-              title="Verify"
-              detail="Return here so the app checks your X account proof."
-            />
-            <FlowStep
-              icon={CircleDollarSign}
-              step="03"
-              title="Receive CRC"
-              detail={`Your settlement is ${formatDurationShort(claimSettlementTier.delaySeconds)} from your trust/backer status.`}
-            />
-          </div>
-
-          <div className="grid gap-6">
-          <div className="grid gap-6">
-            {loadingData && activeCampaigns.length === 0 ? (
-              <div className="rounded-lg border border-ink/10 bg-[#fbfaf6] p-10 text-center shadow-sm dark:border-white/10 dark:bg-white/5">
-                <Loader2 className="mx-auto h-8 w-8 animate-spin text-marine" />
-              </div>
-            ) : activeCampaigns.length === 0 ? (
-              <div className="rounded-lg border border-ink/10 bg-[#fbfaf6] p-8 shadow-sm dark:border-white/10 dark:bg-white/5">
-                <div className="mx-auto flex max-w-xl flex-col items-center text-center">
-                  <span className="inline-flex h-12 w-12 items-center justify-center rounded-lg border border-ink/10 bg-[#f0ede5] text-ink/55 dark:border-white/10 dark:bg-white/10 dark:text-white/60">
-                    <Megaphone className="h-6 w-6" />
-                  </span>
-                  <p className="mt-4 font-display text-2xl font-black">No live boosts yet.</p>
-                  <p className="mt-2 text-sm font-bold leading-6 text-ink/55 dark:text-white/58">
-                    Launch a creator-funded CRC boost, or check the leaderboard once users start completing verified missions.
-                  </p>
-                  <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-                    <button
-                      type="button"
-                      onClick={() => setGarageSection("creator")}
-                      className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-ink px-4 text-sm font-black text-white transition hover:bg-ink/90 dark:bg-white dark:text-ink"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Create boost
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setGarageSection("leaderboard")}
-                      className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-ink/10 bg-[#f0ede5] px-4 text-sm font-black text-ink transition hover:bg-white dark:border-white/10 dark:bg-white/10 dark:text-white"
-                    >
-                      <Trophy className="h-4 w-4" />
-                      Open leaderboard
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              activeCampaigns.map((campaign) => (
-                <CampaignCard
-                  key={campaign.slug}
-                  campaign={campaign}
-                  creatorProfile={
-                    campaign.createdByAddress
-                      ? campaignCreatorProfiles[campaign.createdByAddress.toLowerCase()] ?? null
-                      : null
-                  }
-                  isMiniApp={isMiniApp}
-                  showXLink={visibleXLinkCampaignId === campaign.id}
-                  verifying={verifyingId === campaign.id}
-                  disabled={
-                    campaignsUnavailable ||
-                    campaign.id <= 0 ||
-                    verifyingId === campaign.id ||
-                    Boolean(claimTimeRemaining(campaign.claimedByMe ?? null, now)) ||
-                    !claimCanTrigger(campaign.claimedByMe ?? null) ||
-                    campaign.stats.remainingClaims <= 0
-                  }
-                  onVerify={() => verifyCampaign(campaign)}
-                  onOpen={() => void openCampaignOnX(campaign)}
-                  now={now}
-                  settlementSeconds={claimSettlementTier.delaySeconds}
-                  feedback={campaignFeedback?.campaignId === campaign.id ? campaignFeedback : null}
+              <div className="grid gap-5 rounded-lg border border-ink/10 bg-[#f7f7fa] p-5 shadow-sm dark:border-white/10 dark:bg-white/5 md:grid-cols-3">
+                <FlowStep
+                  icon={MousePointerClick}
+                  step="01"
+                  title="Open X"
+                  detail="Open the campaign post and complete the requested action."
                 />
-              ))
-            )}
-          </div>
+                <FlowStep
+                  icon={SearchCheck}
+                  step="02"
+                  title="Verify"
+                  detail="Return here so the app checks your X account proof."
+                />
+                <FlowStep
+                  icon={CircleDollarSign}
+                  step="03"
+                  title="Receive CRC"
+                  detail={`Your settlement is ${formatDurationShort(claimSettlementTier.delaySeconds)} from your trust/backer status.`}
+                />
+              </div>
 
-      </div>
+              <div className="grid gap-6">
+                {loadingData && activeCampaigns.length === 0 ? (
+                  <div className="rounded-lg border border-ink/10 bg-[#fbfaf6] p-10 text-center shadow-sm dark:border-white/10 dark:bg-white/5">
+                    <Loader2 className="mx-auto h-8 w-8 animate-spin text-marine" />
+                  </div>
+                ) : activeCampaigns.length === 0 ? (
+                  <div className="rounded-lg border border-ink/10 bg-[#fbfaf6] p-8 shadow-sm dark:border-white/10 dark:bg-white/5">
+                    <div className="mx-auto flex max-w-xl flex-col items-center text-center">
+                      <span className="inline-flex h-12 w-12 items-center justify-center rounded-lg border border-ink/10 bg-[#f0ede5] text-ink/55 dark:border-white/10 dark:bg-white/10 dark:text-white/60">
+                        <Megaphone className="h-6 w-6" />
+                      </span>
+                      <p className="mt-4 font-display text-2xl font-black">No live boosts yet.</p>
+                      <p className="mt-2 text-sm font-bold leading-6 text-ink/55 dark:text-white/58">
+                        Launch a creator-funded CRC boost, or check the leaderboard once users start completing verified missions.
+                      </p>
+                      <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+                        <button
+                          type="button"
+                          onClick={() => setGarageSection("creator")}
+                          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-ink px-4 text-sm font-black text-white transition hover:bg-ink/90 dark:bg-white dark:text-ink"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Create boost
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setGarageSection("leaderboard")}
+                          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-ink/10 bg-[#f0ede5] px-4 text-sm font-black text-ink transition hover:bg-white dark:border-white/10 dark:bg-white/10 dark:text-white"
+                        >
+                          <Trophy className="h-4 w-4" />
+                          Open leaderboard
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  activeCampaigns.map((campaign) => (
+                    <CampaignCard
+                      key={campaign.slug}
+                      campaign={campaign}
+                      creatorProfile={
+                        campaign.createdByAddress
+                          ? campaignCreatorProfiles[campaign.createdByAddress.toLowerCase()] ?? null
+                          : null
+                      }
+                      isMiniApp={isMiniApp}
+                      showXLink={visibleXLinkCampaignId === campaign.id}
+                      verifying={verifyingId === campaign.id}
+                      disabled={
+                        campaignsUnavailable ||
+                        campaign.id <= 0 ||
+                        verifyingId === campaign.id ||
+                        Boolean(claimTimeRemaining(campaign.claimedByMe ?? null, now)) ||
+                        !claimCanTrigger(campaign.claimedByMe ?? null) ||
+                        campaign.stats.remainingClaims <= 0
+                      }
+                      onVerify={() => verifyCampaign(campaign)}
+                      onOpen={() => void openCampaignOnX(campaign)}
+                      now={now}
+                      settlementSeconds={claimSettlementTier.delaySeconds}
+                      feedback={campaignFeedback?.campaignId === campaign.id ? campaignFeedback : null}
+                    />
+                  ))
+                )}
+              </div>
             </div>
           )}
 
