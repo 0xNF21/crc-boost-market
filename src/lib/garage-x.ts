@@ -614,6 +614,19 @@ function toXDateTime(date: Date) {
   return date.toISOString().replace(/\.\d{3}Z$/, "Z");
 }
 
+function clampInteger(value: number, min: number, max: number) {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(max, Math.max(min, Math.floor(value)));
+}
+
+function timelineMaxResults() {
+  return clampInteger(Number(process.env.GARAGE_X_TIMELINE_MAX_RESULTS ?? 25), 5, 100);
+}
+
+function retweetedByFallbackPages() {
+  return clampInteger(Number(process.env.GARAGE_X_RETWEETED_BY_FALLBACK_PAGES ?? 2), 0, 10);
+}
+
 async function findUserInPagedUsers(baseUrl: string, xUserId: string, maxPages = 10) {
   let nextToken: string | undefined;
   let checked = 0;
@@ -636,7 +649,7 @@ async function findUserInPagedUsers(baseUrl: string, xUserId: string, maxPages =
 
 async function findRepostInUserTimeline(tweetId: string, xUserId: string, startTime?: Date | null) {
   const url = new URL(`https://api.x.com/2/users/${xUserId}/tweets`);
-  url.searchParams.set("max_results", "5");
+  url.searchParams.set("max_results", String(timelineMaxResults()));
   url.searchParams.set("tweet.fields", "referenced_tweets,created_at");
   if (startTime) {
     url.searchParams.set("start_time", toXDateTime(startTime));
@@ -649,6 +662,14 @@ async function findRepostInUserTimeline(tweetId: string, xUserId: string, startT
   );
 
   return { ok, checked: posts.length };
+}
+
+async function findRepostByRetweetedUsers(tweetId: string, xUserId: string) {
+  const pages = retweetedByFallbackPages();
+  if (pages <= 0) return { ok: false, checked: 0 };
+
+  const baseUrl = `https://api.x.com/2/tweets/${tweetId}/retweeted_by?max_results=100`;
+  return findUserInPagedUsers(baseUrl, xUserId, pages);
 }
 
 async function findQuoteByAuthor(tweetId: string, xUserId: string, maxPages = 10) {
@@ -692,8 +713,17 @@ export async function verifyGarageXAction(params: {
   }
 
   if (params.action === "repost") {
-    const result = await findRepostInUserTimeline(params.tweetId!, params.xUserId, params.startedAt);
-    return { ...result, evidence: "user_timeline_repost" };
+    const timelineResult = await findRepostInUserTimeline(params.tweetId!, params.xUserId, params.startedAt);
+    if (timelineResult.ok) {
+      return { ...timelineResult, evidence: "user_timeline_repost" };
+    }
+
+    const retweetedByResult = await findRepostByRetweetedUsers(params.tweetId!, params.xUserId);
+    return {
+      ok: retweetedByResult.ok,
+      checked: timelineResult.checked + retweetedByResult.checked,
+      evidence: retweetedByResult.ok ? "retweeted_by_fallback" : "user_timeline_repost+retweeted_by",
+    };
   }
 
   if (params.action === "quote") {

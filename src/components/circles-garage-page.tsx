@@ -473,6 +473,8 @@ function evidenceLabel(value: string | null | undefined): string {
   if (!value) return "Verified";
   if (value.startsWith("cache_")) return `Cached ${evidenceLabel(value.slice("cache_".length)).toLowerCase()}`;
   if (value === "user_timeline_repost") return "User timeline repost";
+  if (value === "retweeted_by_fallback") return "Retweeter scan";
+  if (value === "user_timeline_repost+retweeted_by") return "Timeline + retweeter scan";
   if (value === "retweeted_by") return "Retweeter scan";
   if (value === "quote_tweets") return "Quote lookup";
   if (value === "liking_users") return "Like lookup";
