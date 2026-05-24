@@ -262,27 +262,6 @@ npm run typecheck
 npm run build
 ```
 
-## Production Test Checklist
-
-- Connect Circles wallet on standalone site.
-- Connect Circles wallet in the Circles Playground.
-- Link X from standalone site.
-- Link X through Playground fallback flow.
-- Claim a live campaign.
-- Confirm settlement countdown appears under the active campaign.
-- Remove an X action before settlement and confirm payout is blocked.
-- Keep an X action live and confirm CRC payout.
-- Create a campaign draft.
-- Pay campaign funding with passkey when available.
-- Pay campaign funding with QR/payment link fallback.
-- Confirm payment scan activates the campaign.
-- Cancel an unpaid campaign draft.
-- Test referral link with a second wallet.
-- Confirm referral balance becomes claimable.
-- Claim grouped referral CRC.
-- Open creator reputation page and compare stats with creator dashboard.
-- Check Telegram/X preview card with a cache-busted URL.
-
 ## Current Status
 
 Production is deployed on Vercel and connected to Neon. The core product is built; the next work is mainly production validation with multiple wallets and campaign cleanup before the Garage submission.
