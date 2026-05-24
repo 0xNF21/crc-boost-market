@@ -72,6 +72,7 @@ The Circles trust graph makes the market smarter:
 - QR checkout and payment link fallback.
 - Mini-app passkey payment support for campaign funding where available.
 - Market dashboard with claims, CRC paid, active boosts, and X API reads.
+- Header ticker showing the latest on-chain CRC payout.
 - Personal dashboard with completed actions, earned CRC, pending CRC, and history.
 - Leaderboard with Circles identity, trust/backer badges, missions, earned CRC, and reads.
 - Referral links based on Circles profile name when available.
@@ -167,6 +168,7 @@ This gives creators a durable proof surface and gives judges a fast way to see t
 - X OAuth uses read-only scopes only.
 - Claims are tied to wallet, X user, campaign, tweet, and action.
 - A wallet/X account cannot repeatedly claim the same campaign.
+- Repost verification checks the user's timeline first, then falls back to a capped retweeter scan after repeated misses.
 - Payout happens only after a settlement re-check.
 - Removed actions do not unlock CRC.
 - Creator campaigns go live only after CRC funding is detected.
@@ -202,6 +204,7 @@ The app surfaces market stats in-app: unique wallets, total claims, CRC paid, li
 - Database: Neon Postgres.
 - ORM/migrations: Drizzle.
 - X integration: OAuth 2.0 Authorization Code with PKCE, read-only scopes.
+- Repost verification: user timeline read first; retweeter fallback capped at 50 users after repeated misses, with short-lived positive cache.
 - Circles integration: wallet/profile data, CRC checkout links, mini-app passkey payment flow, trust graph data, and CRC payouts.
 - Social preview: static PNG at `public/crc-boost-preview.png`, referenced by Open Graph/Twitter metadata.
 
