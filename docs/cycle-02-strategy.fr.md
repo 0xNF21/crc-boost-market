@@ -17,3 +17,11 @@ Si les prochaines idees ne rendent pas l'app nettement plus utile, plus fiable, 
 
 CRC Boosts n'a pas besoin d'une grosse v2 forcee. La meilleure suite peut etre soit une v1.1 tres legere si une vraie friction apparait, soit une nouvelle app plus forte pour le cycle suivant.
 
+## Idees A Garder De Cote
+
+- TrustDrop : drops CRC filtres par trust score, direct backer, indirect backer, ou invitations. A reprendre si on veut une app simple centree sur la distribution conditionnelle de CRC.
+
+## Idees A Eviter Pour L'instant
+
+- CRC Pots / cagnottes : terrain deja occupe par des submissions de la saison en cours.
+- CRC Tabs / ardoise de groupe : terrain deja occupe par des submissions de la saison en cours.
